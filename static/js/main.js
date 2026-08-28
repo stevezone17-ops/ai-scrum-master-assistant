@@ -6,11 +6,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (projectSelector) {
         projectSelector.addEventListener('change', (e) => {
             const selectedId = e.target.value;
-            if (selectedId) {
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('project_id', selectedId);
-                window.location.href = currentUrl.toString();
+            if (!selectedId || isNaN(selectedId)) return;
+
+            const pathname = window.location.pathname;
+
+            // 1. /projects/<id>/(sprints|backlog|tasks|kanban|team|standup|assistant|reports) or /projects/<id>
+            const projectSubpageMatch = pathname.match(/^\/projects\/(\d+)(\/.*)?$/);
+            if (projectSubpageMatch) {
+                const subpath = projectSubpageMatch[2] || '';
+                const newUrl = new URL(window.location.href);
+                newUrl.pathname = `/projects/${selectedId}${subpath}`;
+                window.location.href = newUrl.toString();
+                return;
             }
+
+            // 2. /dashboard or /
+            if (pathname === '/dashboard' || pathname === '/') {
+                const newUrl = new URL(window.location.href);
+                newUrl.pathname = '/dashboard';
+                newUrl.searchParams.set('project_id', selectedId);
+                window.location.href = newUrl.toString();
+                return;
+            }
+
+            // 3. /projects
+            if (pathname === '/projects') {
+                const newUrl = new URL(window.location.href);
+                newUrl.pathname = '/projects';
+                newUrl.searchParams.set('project_id', selectedId);
+                window.location.href = newUrl.toString();
+                return;
+            }
+
+            // 4. Fallback for any other pages
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('project_id', selectedId);
+            window.location.href = newUrl.toString();
         });
     }
 });

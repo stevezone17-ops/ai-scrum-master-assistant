@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}{{ sprint.name }} - Sprint Details{% endblock %}
+{% block page_title %}{{ sprint.name }}{% endblock %}
+
+{% block header_actions %}
+<div style="display:flex; gap:10px;">
+    {% if session.role == 'Scrum Master' %}
+        {% if sprint.status == 'Planned' %}
+        <form action="{{ url_for('sprint.start_sprint', sprint_id=sprint.id) }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-play"></i> Start Sprint
+            </button>
+        </form>
+        {% elif sprint.status == 'Active' %}
+        <form action="{{ url_for('sprint.complete_sprint', sprint_id=sprint.id) }}" method="POST"
+              onsubmit="return confirm('Complete Sprint: {{ sprint.name }}? Incomplete stories will return to Product Backlog.');" style="display:inline;">
+            <button type="submit" class="btn btn-primary" style="background:var(--success);">
+                <i class="fa-solid fa-flag-checkered"></i> Complete Sprint
+            </button>
+        </form>
+        {% endif %}
+
+        <button class="btn btn-secondary" onclick="openModal('editSprintModal')">
+            <i class="fa-solid fa-pen"></i> Edit Sprint
+        </button>
+
+        <form action="{{ url_for('sprint.delete_sprint', sprint_id=sprint.id) }}" method="POST"
+              onsubmit="return confirm('Delete sprint: {{ sprint.name }}? Stories will return to backlog.');" style="display:inline;">
+            <button type="submit" class="btn btn-secondary" style="color:var(--danger);">
+                <i class="fa-solid fa-trash"></i> Delete
+            </button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- SPRINT HEADER CARD & STATS -->
+<div class="card" style="margin-bottom:24px; {% if sprint.status == 'Active' %}border: 1px solid var(--success);{% endif %}">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h2 style="font-size:1.4rem; font-weight:800;">{{ sprint.name }}</h2>
+                <span class="badge
+                    {% if sprint.status == 'Active' %}badge-active
+                    {% elif sprint.status == 'Completed' %}badge-completed
+                    {% else %}badge-planned{% endif %}">
+                    {{ sprint.status }}
+                </span>
+            </div>
+            <p style="color:var(--text-secondary); margin-top:4px; font-size:0.9rem;">
+                <i class="fa-solid fa-bullseye" style="color:var(--primary);"></i> <strong>Goal:</strong> {{ sprint.goal }}
+            </p>
+        </div>
+
+        <div style="font-size:0.85rem; color:var(--text-muted); text-align:right;">
+            <div><i class="fa-regular fa-calendar"></i> <strong>Timeline:</strong> {{ sprint.start_date }} &rarr; {{ sprint.end_date }}</div>
+            <div>Project: <a href="{{ url_for('sprint.sprints_view', project_id=project.id) }}">{{ project.name }}</a></div>
+        </div>
+    </div>
+
+    <!-- SPRINT STATS CARDS -->
+    <div class="grid-cols-4" style="margin-bottom:0; margin-top:20px;">
+        <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Total Stories</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--text-primary); margin-top:4px;">{{ stats.total_stories }}</div>
+            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">{{ stats.completed_stories }} Done • {{ stats.pending_stories }} Remaining</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Story Points</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--primary); margin-top:4px;">{{ stats.total_points }} pts</div>
+            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">{{ stats.completed_points }} Completed • {{ stats.remaining_points }} Remaining</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Completion Rate</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--success); margin-top:4px;">{{ stats.progress_pct }}%</div>
+            <div style="margin-top:6px; background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden;">
+                <div style="width: {{ stats.progress_pct }}%; background:var(--success); height:100%;"></div>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Sprint Tasks Summary</div>
+            <div style="font-size:1.5rem; font-weight:800; color:var(--info); margin-top:4px;">
+                {{ task_stats.completed_count }} / {{ task_stats.total_tasks }}
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">
+                <strong>{{ task_stats.completion_pct }}%</strong> Task Completion Rate ({{ task_stats.pending_count }} Pending)
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SPRINT STORIES & BACKLOG ADDITION -->
+<div class="grid-cols-3">
+    <!-- Sprint Stories Table -->
+    <div class="card" style="grid-column: span 2;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="font-size:1.1rem; font-weight:700;">
+                <i class="fa-solid fa-list-check" style="color:var(--info);"></i> Sprint Stories Roster
+            </h3>
+            <span style="font-size:0.82rem; color:var(--text-muted);">{{ sprint_stories|length }} stories assigned</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>User Story</th>
+                        <th>Priority</th>
+                        <th>Points</th>
+                        <th>Status</th>
+                        <th>Assignee</th>
+                        {% if session.role == 'Scrum Master' and sprint.status != 'Completed' %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for story in sprint_stories %}
+                    <tr>
+                        <td style="font-size:0.75rem; color:var(--text-muted);">#{{ story.id }}</td>
+                        <td>
+                            <div style="font-weight:700; font-size:0.9rem;">{{ story.title }}</div>
+                            {% if story.description %}
+                            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">{{ story.description[:60] }}{% if story.description|length > 60 %}…{% endif %}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if story.priority == 'Critical' %}badge-urgent
+                                {% elif story.priority == 'High' %}badge-high
+                                {% elif story.priority == 'Medium' %}badge-medium
+                                {% else %}badge-low{% endif %}">
+                                {{ story.priority }}
+                            </span>
+                        </td>
+                        <td style="font-weight:700; color:var(--primary); font-size:0.85rem;">{{ story.story_points }} pts</td>
+                        <td>
+                            <span class="badge
+                                {% if story.status == 'Done' %}badge-active
+                                {% elif story.status == 'In Progress' %}badge-in-progress
+                                {% elif story.status == 'Ready' %}badge-planned
+                                {% else %}badge-status{% endif %}">
+                                {{ story.status }}
+                            </span>
+                        </td>
+                        <td style="font-size:0.82rem;">{{ story.assignee_name or 'Unassigned' }}</td>
+                        {% if session.role == 'Scrum Master' and sprint.status != 'Completed' %}
+                        <td>
+                            <form action="{{ url_for('sprint.remove_story_from_sprint', sprint_id=sprint.id, story_id=story.id) }}" method="POST"
+                                  onsubmit="return confirm('Remove story #{{ story.id }} from {{ sprint.name }}? It will return to Product Backlog.');">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--warning);" title="Return to Backlog">
+                                    <i class="fa-solid fa-arrow-left"></i> Remove
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">
+                            No user stories added to this sprint yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Backlog Stories Panel -->
+    <div class="card">
+        <h3 style="font-size:1.05rem; font-weight:700; margin-bottom:12px;">
+            <i class="fa-solid fa-plus-circle" style="color:var(--primary);"></i> Add Story from Backlog
+        </h3>
+
+        {% if session.role == 'Scrum Master' and sprint.status != 'Completed' %}
+            {% if available_stories and available_stories|length > 0 %}
+            <form action="{{ url_for('sprint.add_story_to_sprint', sprint_id=sprint.id) }}" method="POST">
+                <div class="form-group">
+                    <label class="form-label">Select Available Backlog Story</label>
+                    <select name="story_id" class="form-control" required style="font-size:0.85rem;">
+                        <option value="">-- Choose User Story --</option>
+                        {% for s in available_stories %}
+                        <option value="{{ s.id }}">
+                            #{{ s.id }} {{ s.title[:35] }}... ({{ s.story_points }}pts • {{ s.priority }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    <i class="fa-solid fa-plus"></i> Add to {{ sprint.name }}
+                </button>
+            </form>
+            {% else %}
+            <p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:20px 0;">
+                All backlog stories for this project are already assigned or completed!
+            </p>
+            {% endif %}
+        {% else %}
+        <p style="font-size:0.85rem; color:var(--text-muted);">
+            {% if sprint.status == 'Completed' %}
+            This sprint is completed and locked for edits.
+            {% else %}
+            Only Scrum Masters can add backlog stories to a sprint.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- EDIT SPRINT MODAL -->
+{% if session.role == 'Scrum Master' %}
+<div id="editSprintModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-pen"></i> Edit Sprint Details</h3>
+            <button class="close-btn" onclick="closeModal('editSprintModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('sprint.edit_sprint', sprint_id=sprint.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Sprint Name *</label>
+                    <input type="text" name="name" class="form-control" value="{{ sprint.name }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sprint Goal *</label>
+                    <textarea name="goal" class="form-control" rows="3" required>{{ sprint.goal }}</textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ sprint.start_date }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">End Date *</label>
+                        <input type="date" name="end_date" class="form-control" value="{{ sprint.end_date }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sprint Status</label>
+                    <select name="status" class="form-control">
+                        <option value="Planned" {% if sprint.status == 'Planned' %}selected{% endif %}>Planned</option>
+                        <option value="Active" {% if sprint.status == 'Active' %}selected{% endif %}>Active</option>
+                        <option value="Completed" {% if sprint.status == 'Completed' %}selected{% endif %}>Completed</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

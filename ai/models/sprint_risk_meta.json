@@ -1,0 +1,175 @@
+{
+  "model_info": {
+    "model_name": "RandomForestClassifier",
+    "n_estimators": 100,
+    "max_depth": 10,
+    "training_samples": 155,
+    "test_samples": 31,
+    "feature_count": 17,
+    "features": [
+      "total_tasks",
+      "completed_tasks",
+      "pending_tasks",
+      "overdue_tasks",
+      "total_story_points",
+      "completed_story_points",
+      "developer_count",
+      "estimated_hours",
+      "actual_hours",
+      "days_allocated",
+      "days_remaining",
+      "previous_velocity",
+      "bug_count",
+      "high_priority_tasks",
+      "task_completion_rate",
+      "story_point_completion_rate",
+      "hours_variance"
+    ],
+    "labels": [
+      "LOW",
+      "MEDIUM",
+      "HIGH"
+    ],
+    "accuracy": 0.6774,
+    "f1_score": 0.6494,
+    "training_date": "2026-08-28T03:17:57",
+    "data_source": "combined"
+  },
+  "evaluation": {
+    "accuracy": 0.6774,
+    "precision": 0.6435,
+    "recall": 0.6774,
+    "f1_score": 0.6494,
+    "confusion_matrix": [
+      [
+        6,
+        2,
+        1
+      ],
+      [
+        1,
+        14,
+        1
+      ],
+      [
+        1,
+        4,
+        1
+      ]
+    ],
+    "classification_report": {
+      "LOW": {
+        "precision": 0.3333333333333333,
+        "recall": 0.16666666666666666,
+        "f1-score": 0.2222222222222222,
+        "support": 6.0
+      },
+      "MEDIUM": {
+        "precision": 0.75,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.7058823529411765,
+        "support": 9.0
+      },
+      "HIGH": {
+        "precision": 0.7,
+        "recall": 0.875,
+        "f1-score": 0.7777777777777778,
+        "support": 16.0
+      },
+      "accuracy": 0.6774193548387096,
+      "macro avg": {
+        "precision": 0.5944444444444444,
+        "recall": 0.5694444444444444,
+        "f1-score": 0.5686274509803922,
+        "support": 31.0
+      },
+      "weighted avg": {
+        "precision": 0.6435483870967742,
+        "recall": 0.6774193548387096,
+        "f1-score": 0.6493780307822054,
+        "support": 31.0
+      }
+    },
+    "cross_validation": {
+      "mean": 0.6516,
+      "std": 0.0851,
+      "folds": [
+        0.6129,
+        0.5161,
+        0.6774,
+        0.6774,
+        0.7742
+      ]
+    }
+  },
+  "feature_importance": [
+    {
+      "feature": "hours_variance",
+      "importance": 0.1452
+    },
+    {
+      "feature": "task_completion_rate",
+      "importance": 0.1031
+    },
+    {
+      "feature": "pending_tasks",
+      "importance": 0.0865
+    },
+    {
+      "feature": "story_point_completion_rate",
+      "importance": 0.0845
+    },
+    {
+      "feature": "days_remaining",
+      "importance": 0.0643
+    },
+    {
+      "feature": "actual_hours",
+      "importance": 0.0579
+    },
+    {
+      "feature": "completed_story_points",
+      "importance": 0.0546
+    },
+    {
+      "feature": "estimated_hours",
+      "importance": 0.0489
+    },
+    {
+      "feature": "completed_tasks",
+      "importance": 0.0484
+    },
+    {
+      "feature": "overdue_tasks",
+      "importance": 0.0456
+    },
+    {
+      "feature": "days_allocated",
+      "importance": 0.0446
+    },
+    {
+      "feature": "bug_count",
+      "importance": 0.0407
+    },
+    {
+      "feature": "previous_velocity",
+      "importance": 0.0393
+    },
+    {
+      "feature": "total_story_points",
+      "importance": 0.0383
+    },
+    {
+      "feature": "total_tasks",
+      "importance": 0.034
+    },
+    {
+      "feature": "high_priority_tasks",
+      "importance": 0.0329
+    },
+    {
+      "feature": "developer_count",
+      "importance": 0.031
+    }
+  ]
+}

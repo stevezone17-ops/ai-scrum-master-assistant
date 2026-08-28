@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Team Management - {{ project.name }}{% endblock %}
+{% block page_title %}Team Management & Workload{% endblock %}
+
+{% block header_actions %}
+{% if session.role == 'Scrum Master' %}
+<button class="btn btn-primary" onclick="openModal('addMemberModal')">
+    <i class="fa-solid fa-user-plus"></i> Add Team Member
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- TEAM STATISTICS SUMMARY CARDS -->
+<div class="grid-cols-4" style="margin-bottom:24px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Team Members</div>
+            <div class="stat-value" style="color:var(--primary);">{{ team_stats.total_team_members }}</div>
+            <div class="stat-subtext">Project Assigned Members</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-solid fa-users"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Developers</div>
+            <div class="stat-value" style="color:var(--info);">{{ team_stats.developer_count }}</div>
+            <div class="stat-subtext">Active Engineering Team</div>
+        </div>
+        <div class="stat-icon icon-purple"><i class="fa-solid fa-code"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Scrum Masters / PO</div>
+            <div class="stat-value" style="color:var(--emerald);">{{ team_stats.scrum_master_count + team_stats.product_owner_count }}</div>
+            <div class="stat-subtext">{{ team_stats.scrum_master_count }} SM • {{ team_stats.product_owner_count }} PO</div>
+        </div>
+        <div class="stat-icon icon-emerald"><i class="fa-solid fa-user-gear"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Average Team Workload</div>
+            <div class="stat-value" style="color:var(--warning);">{{ team_stats.avg_workload_pct }}%</div>
+            <div class="stat-subtext">Based on 40h weekly baseline</div>
+        </div>
+        <div class="stat-icon icon-rose"><i class="fa-solid fa-chart-pie"></i></div>
+    </div>
+</div>
+
+<div class="grid-cols-3">
+    <!-- Team Members Table -->
+    <div class="card" style="grid-column: span 3;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="font-size:1.1rem; font-weight:700;">
+                <i class="fa-solid fa-users-gear" style="color:var(--info);"></i> Project Team Roster & Workload
+            </h3>
+            <span style="font-size:0.85rem; color:var(--text-muted);">Project: <strong>{{ project.name }}</strong></span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Team Member</th>
+                        <th>Email</th>
+                        <th>Project Role</th>
+                        <th>Assigned Tasks</th>
+                        <th>Completed</th>
+                        <th>Pending</th>
+                        <th>Workload (Est / 40h)</th>
+                        {% if session.role == 'Scrum Master' %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in members %}
+                    <tr>
+                        <td style="font-weight:700;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div class="user-avatar" style="width:32px; height:32px;">{{ m.username[0]|upper }}</div>
+                                <span>{{ m.username }}</span>
+                            </div>
+                        </td>
+                        <td style="color:var(--text-secondary); font-size:0.85rem;">{{ m.email }}</td>
+                        <td><span class="badge badge-status">{{ m.role_in_project }}</span></td>
+                        <td style="text-align:center; font-weight:700;">{{ m.total_tasks }}</td>
+                        <td style="text-align:center; color:var(--success); font-weight:700;">{{ m.completed_tasks }}</td>
+                        <td style="text-align:center; color:var(--warning); font-weight:700;">{{ m.pending_tasks }}</td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="width:100px; background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
+                                    {% set color = 'var(--success)' if m.workload_pct <= 75 else ('var(--warning)' if m.workload_pct <= 100 else 'var(--danger)') %}
+                                    <div style="width: {{ m.workload_pct if m.workload_pct <= 100 else 100 }}%; background:{{ color }}; height:100%;"></div>
+                                </div>
+                                <span style="font-size:0.82rem; font-weight:700; color:var(--text-primary);">
+                                    {{ m.assigned_hours }}/40h ({{ m.workload_pct }}%)
+                                </span>
+                            </div>
+                        </td>
+                        {% if session.role == 'Scrum Master' %}
+                        <td>
+                            <form action="{{ url_for('project.remove_team_member', project_id=project.id, user_id=m.user_id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove {{ m.username }} from {{ project.name }}? (Note: User account will NOT be deleted)');">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger);" title="Remove Member from Project">
+                                    <i class="fa-solid fa-user-minus"></i> Remove
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">
+                            No team members assigned to this project yet. Click "Add Team Member" above.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ADD MEMBER MODAL -->
+{% if session.role == 'Scrum Master' %}
+<div id="addMemberModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-user-plus"></i> Add Team Member to Project</h3>
+            <button class="close-btn" onclick="closeModal('addMemberModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('project.team_management', project_id=project.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Select Registered User *</label>
+                    <select name="user_id" class="form-control" required>
+                        <option value="">-- Choose Existing Registered User --</option>
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}">{{ u.username }} ({{ u.email }} • System: {{ u.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Role within Project *</label>
+                    <select name="role_in_project" class="form-control" required>
+                        <option value="Developer" selected>Developer</option>
+                        <option value="Scrum Master">Scrum Master</option>
+                        <option value="Product Owner">Product Owner</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Add Member to Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

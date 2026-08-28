@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}AI Scrum Master Assistant - {{ current_project.name }}{% endblock %}
+{% block page_title %}AI Scrum Master Assistant{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; min-height: calc(100vh - 140px);">
+
+    <!-- HEADER / HERO CARD -->
+    <div class="card" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)); border: 1px solid rgba(245, 158, 11, 0.3); padding: 20px 24px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: #f59e0b; flex-shrink: 0;">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div>
+                <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                    AI Scrum Master Assistant
+                    <span style="font-size: 0.72rem; background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 2px 10px; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700;">Rule & ML Powered</span>
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                    Ask real-time questions regarding sprint progress, risk level, overdue tasks, team workload, and Scrum recommendations for <strong>{{ current_project.name }}</strong>.
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.03); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <i class="fa-solid fa-folder" style="color: var(--primary);"></i> {{ current_project.name }}
+            </span>
+        </div>
+    </div>
+
+    <!-- SUGGESTED QUESTIONS CHIPS -->
+    <div>
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-lightbulb" style="color: #f59e0b;"></i> Suggested Questions:
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="suggestion-chip" onclick="askSuggested('How is the current sprint doing?')">
+                🚀 How is the current sprint doing?
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askSuggested('Is the sprint at risk?')">
+                🛡️ Is the sprint at risk?
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askSuggested('Which tasks are overdue?')">
+                ⚠️ Which tasks are overdue?
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askSuggested('Who has the highest workload?')">
+                👥 Who has the highest workload?
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askSuggested('What blockers were reported today?')">
+                💬 What blockers were reported today?
+            </button>
+            <button type="button" class="suggestion-chip" onclick="askSuggested('What should the Scrum Master focus on?')">
+                💡 What should the Scrum Master focus on?
+            </button>
+        </div>
+    </div>
+
+    <!-- CHAT MESSAGES AREA -->
+    <div class="card" style="flex: 1; display: flex; flex-direction: column; padding: 20px; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-color); min-height: 380px; max-height: 520px;">
+        <div id="chatMessages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 8px;">
+            
+            <!-- INITIAL ASSISTANT GREETING -->
+            <div class="chat-bubble assistant-bubble">
+                <div class="chat-avatar">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="chat-content">
+                    <div class="chat-header">AI Scrum Master Assistant</div>
+                    <div class="chat-text">
+                        Hello! 👋 I'm your AI Scrum Master Assistant for <strong>{{ current_project.name }}</strong>. Ask me anything about sprint progress, risk level, overdue tasks, team workload, daily stand-up blockers, or action items!
+                    </div>
+                </div>
+            </div>
+
+            <!-- RENDER SESSION CHAT HISTORY -->
+            {% for chat in chat_history %}
+            <!-- USER MESSAGE -->
+            <div class="chat-bubble user-bubble">
+                <div class="chat-content">
+                    <div class="chat-header">You</div>
+                    <div class="chat-text">{{ chat.question }}</div>
+                </div>
+                <div class="chat-avatar user-avatar-icon">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            </div>
+            <!-- ASSISTANT RESPONSE -->
+            <div class="chat-bubble assistant-bubble">
+                <div class="chat-avatar">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="chat-content">
+                    <div class="chat-header">AI Scrum Master Assistant</div>
+                    <div class="chat-text formatted-response">{{ chat.response }}</div>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- INPUT CONTAINER -->
+        <div style="margin-top: 16px; pt: 12px; border-top: 1px solid var(--border-color); display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="chatInput" class="form-control" placeholder="Ask a question about sprint progress, risk, workload, blockers..." style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.92rem;" onkeydown="handleKeyPress(event)">
+            
+            <button type="button" id="sendBtn" class="btn btn-primary" onclick="sendMessage()" style="padding: 12px 20px; display: flex; align-items: center; gap: 8px; font-weight: 700;">
+                <span>Send</span>
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.suggestion-chip {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.suggestion-chip:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #f59e0b;
+    transform: translateY(-1px);
+}
+
+.chat-bubble {
+    display: flex;
+    gap: 12px;
+    max-width: 85%;
+    animation: fadeIn 0.25s ease;
+}
+.assistant-bubble {
+    align-self: flex-start;
+}
+.user-bubble {
+    align-self: flex-end;
+    flex-direction: row;
+}
+
+.chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f59e0b;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.user-avatar-icon {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: var(--info);
+}
+
+.chat-content {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid var(--border-color);
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+}
+.user-bubble .chat-content {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.25));
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.chat-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+.user-bubble .chat-header {
+    color: #f59e0b;
+    text-align: right;
+}
+
+.chat-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+const projectId = {{ current_project.id }};
+
+function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function askSuggested(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
+}
+
+function formatResponseText(text) {
+    if (!text) return '';
+    // Format bold text
+    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Format italic text
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    // Format inline code
+    formatted = formatted.replace(/`(.*?)`/g, '<code style="background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">$1</code>');
+    return formatted;
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messagesContainer = document.getElementById('chatMessages');
+    const question = input.value.strip ? input.value.strip() : input.value.trim();
+
+    if (!question) return;
+
+    // Append User Message
+    const userHtml = `
+        <div class="chat-bubble user-bubble">
+            <div class="chat-content">
+                <div class="chat-header">You</div>
+                <div class="chat-text">${escapeHtml(question)}</div>
+            </div>
+            <div class="chat-avatar user-avatar-icon">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', userHtml);
+    input.value = '';
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Show Loading Bubble
+    const loadingId = 'loading-' + Date.now();
+    const loadingHtml = `
+        <div class="chat-bubble assistant-bubble" id="${loadingId}">
+            <div class="chat-avatar">
+                <i class="fa-solid fa-robot fa-spin"></i>
+            </div>
+            <div class="chat-content">
+                <div class="chat-header">AI Scrum Master Assistant</div>
+                <div class="chat-text" style="color:var(--text-muted);">Analyzing project database...</div>
+            </div>
+        </div>
+    `;
+    messagesContainer.insertAdjacentHTML('beforeend', loadingHtml);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Disable input
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+        const response = await fetch(`/projects/${projectId}/assistant/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ question: question })
+        });
+
+        const data = await response.json();
+        
+        // Remove loading bubble
+        const loadingElem = document.getElementById(loadingId);
+        if (loadingElem) loadingElem.remove();
+
+        const formatted = formatResponseText(data.response || 'No response returned.');
+
+        const assistantHtml = `
+            <div class="chat-bubble assistant-bubble">
+                <div class="chat-avatar">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="chat-content">
+                    <div class="chat-header">AI Scrum Master Assistant</div>
+                    <div class="chat-text">${formatted}</div>
+                </div>
+            </div>
+        `;
+        messagesContainer.insertAdjacentHTML('beforeend', assistantHtml);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    } catch (err) {
+        console.error("Chat request failed:", err);
+        const loadingElem = document.getElementById(loadingId);
+        if (loadingElem) loadingElem.remove();
+
+        const errHtml = `
+            <div class="chat-bubble assistant-bubble">
+                <div class="chat-avatar">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);"></i>
+                </div>
+                <div class="chat-content">
+                    <div class="chat-header">AI Scrum Master Assistant</div>
+                    <div class="chat-text" style="color:var(--warning);">Failed to connect to AI Assistant service. Please try again.</div>
+                </div>
+            </div>
+        `;
+        messagesContainer.insertAdjacentHTML('beforeend', errHtml);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+// Format pre-existing history bubbles on page load
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.formatted-response').forEach(el => {
+        el.innerHTML = formatResponseText(el.textContent);
+    });
+    const container = document.getElementById('chatMessages');
+    if (container) container.scrollTop = container.scrollHeight;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Task #{{ task.id }} - {{ task.title }}{% endblock %}
+{% block page_title %}Task Details{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('task.kanban_board', project_id=project.id) }}" class="btn btn-secondary">
+    <i class="fa-solid fa-arrow-left"></i> Back to Kanban Board
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px; margin:0 auto; padding:32px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.1rem; color:var(--text-muted); font-weight:700;">#{{ task.id }}</span>
+            <h2 style="font-size:1.4rem; font-weight:800;">{{ task.title }}</h2>
+        </div>
+        <span class="badge
+            {% if task.status == 'Done' %}badge-active
+            {% elif task.status == 'In Progress' %}badge-in-progress
+            {% elif task.status == 'Testing' %}badge-high
+            {% else %}badge-status{% endif %}">
+            {{ task.status }}
+        </span>
+    </div>
+
+    {% if task.description %}
+    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); padding:16px; border-radius:var(--radius-md); margin-bottom:24px;">
+        <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:6px;">Task Description</div>
+        <p style="color:var(--text-secondary); line-height:1.6; margin:0;">{{ task.description }}</p>
+    </div>
+    {% endif %}
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:16px; border-radius:var(--radius-md);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Related User Story</div>
+            <div style="font-size:0.95rem; font-weight:700; color:var(--primary); margin-top:6px;">
+                {% if task.story_title %}
+                    📌 {{ task.story_title }}
+                {% else %}
+                    <span style="color:var(--text-muted);">No linked user story</span>
+                {% endif %}
+            </div>
+            {% if user_story and user_story.description %}
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">{{ user_story.description[:100] }}</div>
+            {% endif %}
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:16px; border-radius:var(--radius-md);">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Assigned Developer</div>
+            <div style="font-size:0.95rem; font-weight:700; margin-top:6px; display:flex; align-items:center; gap:8px;">
+                {% if task.assignee_name %}
+                    <div class="user-avatar" style="width:26px; height:26px; font-size:0.7rem;">{{ task.assignee_name[0]|upper }}</div>
+                    <span>{{ task.assignee_name }}</span>
+                    {% if task.assigned_to == session.user_id %}
+                    <span class="badge badge-active" style="font-size:0.7rem;">Assigned to You</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color:var(--text-muted);">Unassigned</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+        <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Priority</div>
+            <div style="margin-top:6px;">
+                <span class="badge
+                    {% if task.priority == 'Critical' %}badge-urgent
+                    {% elif task.priority == 'High' %}badge-high
+                    {% elif task.priority == 'Medium' %}badge-medium
+                    {% else %}badge-low{% endif %}">
+                    {{ task.priority }}
+                </span>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Est / Actual Hrs</div>
+            <div style="font-size:1rem; font-weight:800; margin-top:6px;">
+                <span style="color:var(--primary);">{{ task.estimated_hours }}h</span> /
+                <span style="color:var(--info);">{{ task.actual_hours }}h</span>
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Hours Variance</div>
+            <div style="font-size:0.95rem; font-weight:800; margin-top:6px;">
+                {% set var = task.actual_hours - task.estimated_hours %}
+                {% if var > 0 %}
+                <span style="color:var(--danger);">+{{ var|round(1) }}h (Over)</span>
+                {% elif var < 0 %}
+                <span style="color:var(--success);">{{ var|round(1) }}h (Under)</span>
+                {% else %}
+                <span style="color:var(--text-secondary);">On Est</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Due Date</div>
+            <div style="font-size:0.9rem; font-weight:700; margin-top:6px;">
+                {% if task.due_date %}
+                    {{ task.due_date }}
+                    {% if task.is_overdue %}
+                    <br><span class="badge badge-urgent" style="font-size:0.65rem; margin-top:2px;">OVERDUE</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color:var(--text-muted);">-</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); pt:16px; margin-top:16px;">
+        <a href="{{ url_for('task.tasks_view', project_id=project.id) }}" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-list-check"></i> Open in Task Management List
+        </a>
+
+        {% if session.role in ['Scrum Master', 'Product Owner'] or (session.role == 'Developer' and task.assigned_to == session.user_id) %}
+        <a href="{{ url_for('task.tasks_view', project_id=project.id) }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-pen"></i> Update Task Status / Log Hours
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

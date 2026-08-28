@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Stand-up - AI Scrum Master Assistant{% endblock %}
+{% block page_title %}Daily Scrum Stand-up{% endblock %}
+
+{% block header_actions %}
+<div style="display:flex; align-items:center; gap:10px;">
+    {% if user_today_standup %}
+    <button class="btn btn-warning" onclick="openModal('submitStandupModal')">
+        <i class="fa-solid fa-pen-to-square"></i> Edit Today's Stand-up
+    </button>
+    {% else %}
+    <button class="btn btn-primary" onclick="openModal('submitStandupModal')">
+        <i class="fa-solid fa-plus"></i> Submit Daily Update
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- AI DAILY STAND-UP SUMMARY CARD (Step 12C) -->
+<div class="card" style="margin-bottom:24px; border:1px solid rgba(59, 130, 246, 0.3); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-robot" style="color:var(--info);"></i> AI Daily Stand-up Summary
+            <span style="font-size:0.75rem; background:rgba(59,130,246,0.15); color:var(--info); padding:2px 8px; border-radius:12px; border:1px solid rgba(59,130,246,0.3);">NLP Engine</span>
+        </h3>
+        <div style="font-size:0.85rem; color:var(--text-muted);">
+            Date: <strong>{{ today_date }}</strong>
+        </div>
+    </div>
+
+    {% if not ai_team_summary or not ai_team_summary.has_updates %}
+    <div style="text-align:center; padding:20px 16px; color:var(--text-muted);">
+        <i class="fa-solid fa-clipboard-user" style="font-size:1.8rem; margin-bottom:8px; opacity:0.5; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">No stand-up updates submitted for today yet.</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">When developers submit their updates, AI analysis and blocker tracking will display here.</div>
+    </div>
+
+    {% elif ai_team_summary.error %}
+    <div style="text-align:center; padding:20px 16px; color:var(--warning);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:1.8rem; margin-bottom:8px; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">AI stand-up analysis is currently unavailable.</div>
+    </div>
+
+    {% else %}
+    <!-- REPEATED BLOCKER ALERTS (Requirement 9) -->
+    {% if ai_team_summary.repeated_blockers %}
+    <div style="margin-bottom:16px; display:flex; flex-direction:column; gap:8px;">
+        {% for alert in ai_team_summary.repeated_blockers %}
+        <div style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); border-radius:var(--radius-md); padding:12px 14px; display:flex; align-items:center; gap:10px; color:#f87171;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:1.1rem; flex-shrink:0;"></i>
+            <div style="font-size:0.86rem; font-weight:600;">{{ alert.message }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- METRICS ROW -->
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Reporting Rate</div>
+            <div style="font-size:1.25rem; font-weight:800; color:var(--primary); margin-top:2px;">
+                {{ ai_team_summary.developers_reported }}/{{ ai_team_summary.total_team_devs }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">developers reported</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Blockers Detected</div>
+            <div style="font-size:1.25rem; font-weight:800; color:{% if ai_team_summary.blocker_count > 0 %}var(--danger){% else %}var(--success){% endif %}; margin-top:2px;">
+                {{ ai_team_summary.blocker_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">critical blockers</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Potential Issues</div>
+            <div style="font-size:1.25rem; font-weight:800; color:{% if ai_team_summary.potential_issue_count > 0 %}var(--warning){% else %}var(--success){% endif %}; margin-top:2px;">
+                {{ ai_team_summary.potential_issue_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">delays or risks</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">On Schedule</div>
+            <div style="font-size:1.25rem; font-weight:800; color:var(--success); margin-top:2px;">
+                {{ ai_team_summary.no_issue_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">progressing normally</div>
+        </div>
+    </div>
+
+    <!-- HIGH PRIORITY BLOCKERS LIST -->
+    {% if ai_team_summary.high_priority_blockers %}
+    <div style="background:rgba(239, 68, 68, 0.04); border:1px solid rgba(239, 68, 68, 0.2); border-radius:var(--radius-md); padding:12px 14px; margin-bottom:12px;">
+        <div style="font-size:0.78rem; font-weight:700; color:var(--danger); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-ban"></i> High Priority Blockers
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+            {% for b in ai_team_summary.high_priority_blockers %}
+            <div style="font-size:0.85rem; background:rgba(0,0,0,0.2); padding:8px 10px; border-radius:var(--radius-sm); border-left:3px solid var(--danger);">
+                <strong style="color:var(--text-primary);">{{ b.developer }}:</strong> <span style="color:#f87171;">{{ b.blocker }}</span>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">{{ b.reason }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- POTENTIAL ISSUES LIST -->
+    {% if ai_team_summary.potential_issues %}
+    <div style="background:rgba(245, 158, 11, 0.04); border:1px solid rgba(245, 158, 11, 0.2); border-radius:var(--radius-md); padding:12px 14px;">
+        <div style="font-size:0.78rem; font-weight:700; color:var(--warning); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Potential Issues & Delays
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+            {% for p in ai_team_summary.potential_issues %}
+            <div style="font-size:0.85rem; background:rgba(0,0,0,0.2); padding:8px 10px; border-radius:var(--radius-sm); border-left:3px solid var(--warning);">
+                <strong style="color:var(--text-primary);">{{ p.developer }}:</strong> <span style="color:#fbbf24;">{{ p.issue }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<div class="grid-cols-3">
+    <!-- Daily Feed -->
+    <div class="card" style="grid-column: span 2;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="font-size:1.1rem; font-weight:700;">
+                <i class="fa-solid fa-comments" style="color:var(--primary);"></i> Daily Stand-up Feed
+            </h3>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <form method="GET" action="{{ url_for('standup.standup_view', project_id=project.id) }}" style="display:flex; align-items:center; gap:6px;">
+                    <input type="date" name="date" value="{{ filter_date }}" class="form-control" style="font-size:0.8rem; padding:4px 8px;" onchange="this.form.submit()">
+                    <a href="{{ url_for('standup.standup_view', project_id=project.id, date='all') }}" class="btn btn-outline btn-sm" style="font-size:0.75rem;">All</a>
+                </form>
+            </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:16px;">
+            {% for s in standups %}
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:18px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="user-avatar" style="width:34px; height:34px;">{{ s.username[0]|upper }}</div>
+                        <div>
+                            <div style="font-weight:700; font-size:0.92rem;">{{ s.username }}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">{{ s.user_role }} • {{ s.date }}</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Status Badge (Requirement 6) -->
+                    <div>
+                        {% if s.status == 'BLOCKED' %}
+                        <span class="badge badge-urgent" style="display:inline-flex; align-items:center; gap:4px; font-weight:800;">
+                            <i class="fa-solid fa-ban"></i> BLOCKED
+                        </span>
+                        {% elif s.status == 'POTENTIAL_ISSUE' %}
+                        <span class="badge badge-high" style="display:inline-flex; align-items:center; gap:4px; font-weight:800;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> POTENTIAL ISSUE
+                        </span>
+                        {% else %}
+                        <span class="badge badge-active" style="display:inline-flex; align-items:center; gap:4px; font-weight:800;">
+                            <i class="fa-solid fa-circle-check"></i> NO ISSUE
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- AI Summary Box (Requirement 7) -->
+                <div style="background:rgba(99, 102, 241, 0.05); border:1px solid rgba(99, 102, 241, 0.2); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:12px;">
+                    <div style="font-size:0.72rem; color:var(--primary); font-weight:700; text-transform:uppercase; margin-bottom:2px; display:flex; align-items:center; gap:4px;">
+                        <i class="fa-solid fa-robot"></i> AI Summary
+                    </div>
+                    <div style="font-size:0.86rem; color:var(--text-primary);">{{ s.summary }}</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:10px;">
+                    <div style="background:rgba(0,0,0,0.2); padding:10px 14px; border-radius:var(--radius-sm);">
+                        <div style="font-size:0.75rem; color:var(--success); font-weight:700; text-transform:uppercase; margin-bottom:4px;">
+                            <i class="fa-solid fa-check"></i> Yesterday's Work
+                        </div>
+                        <div style="font-size:0.88rem; color:var(--text-primary);">{{ s.yesterday_work }}</div>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,0.2); padding:10px 14px; border-radius:var(--radius-sm);">
+                        <div style="font-size:0.75rem; color:var(--info); font-weight:700; text-transform:uppercase; margin-bottom:4px;">
+                            <i class="fa-solid fa-forward"></i> Today's Plan
+                        </div>
+                        <div style="font-size:0.88rem; color:var(--text-primary);">{{ s.today_plan }}</div>
+                    </div>
+                </div>
+
+                {% if s.blockers and s.blockers.strip().lower() not in ['none', 'n/a', 'no blockers', 'na', 'no impediment'] %}
+                <div style="background:var(--danger-light); border-left:3px solid var(--danger); padding:10px 14px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; margin-bottom:6px;">
+                    <div style="font-size:0.75rem; color:var(--danger); font-weight:700; text-transform:uppercase; margin-bottom:2px;">
+                        <i class="fa-solid fa-ban"></i> Blocker / Impediment:
+                    </div>
+                    <div style="font-size:0.88rem; color:#f87171;">{{ s.blockers }}</div>
+                </div>
+                {% endif %}
+
+                {% if s.comments %}
+                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:8px 12px; border-radius:var(--radius-sm); font-size:0.82rem; color:var(--text-muted);">
+                    <strong>Comments:</strong> {{ s.comments }}
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:32px;">No stand-up updates submitted for this date.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right Column: Guidelines & Developer History -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+        <!-- Stand-up Rules & Guidelines -->
+        <div class="card">
+            <h3 style="font-size:1rem; font-weight:700; margin-bottom:14px;">
+                <i class="fa-solid fa-circle-info" style="color:var(--info);"></i> Agile Stand-up Guidelines
+            </h3>
+            <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:18px; display:flex; flex-direction:column; gap:8px;">
+                <li>Submit your update daily before the morning sync.</li>
+                <li>Keep progress and plans concise and actionable.</li>
+                <li>Flag blockers immediately for Scrum Master assistance.</li>
+                <li>AI automatically analyzes updates and detects repeated blockers.</li>
+            </ul>
+        </div>
+
+        <!-- My Recent History (Requirement 3) -->
+        {% if session.role == 'Developer' and user_history %}
+        <div class="card">
+            <h3 style="font-size:1rem; font-weight:700; margin-bottom:12px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary);"></i> My Previous Updates
+            </h3>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height:360px; overflow-y:auto;">
+                {% for h in user_history[:5] %}
+                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px; border-radius:var(--radius-sm);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                        <span style="font-size:0.8rem; font-weight:700; color:var(--text-primary);">{{ h.date }}</span>
+                        {% if h.status == 'BLOCKED' %}
+                        <span class="badge badge-urgent" style="font-size:0.65rem;">BLOCKED</span>
+                        {% elif h.status == 'POTENTIAL_ISSUE' %}
+                        <span class="badge badge-high" style="font-size:0.65rem;">ISSUE</span>
+                        {% else %}
+                        <span class="badge badge-active" style="font-size:0.65rem;">OK</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">{{ h.summary }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SUBMIT / EDIT STAND-UP MODAL (Requirement 1 & 2) -->
+<div id="submitStandupModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="fa-solid fa-pen-to-square"></i>
+                {% if user_today_standup %}Edit Today's Stand-up{% else %}Submit Daily Stand-up{% endif %}
+            </h3>
+            <button class="close-btn" onclick="closeModal('submitStandupModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('standup.standup_view', project_id=project.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">What did you complete yesterday? <span style="color:var(--danger);">*</span></label>
+                    <textarea name="yesterday_work" class="form-control" rows="3" placeholder="Tasks completed or progress made..." required>{{ user_today_standup.yesterday_work if user_today_standup else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">What do you plan to do today? <span style="color:var(--danger);">*</span></label>
+                    <textarea name="today_plan" class="form-control" rows="3" placeholder="Target tasks for today..." required>{{ user_today_standup.today_plan if user_today_standup else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Current Blockers / Impediments</label>
+                    <textarea name="blockers" class="form-control" rows="2" placeholder="Write 'None' if clear, or describe any blocker or dependency...">{{ user_today_standup.blockers if user_today_standup else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Optional Additional Comments</label>
+                    <textarea name="comments" class="form-control" rows="2" placeholder="Any extra notes, announcements, or help requests...">{{ user_today_standup.comments if user_today_standup else '' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    {% if user_today_standup %}Update Today's Stand-up{% else %}Submit Stand-up Update{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

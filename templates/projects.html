@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Projects - AI Scrum Master Assistant{% endblock %}
+{% block page_title %}Agile Workspace Projects{% endblock %}
+
+{% block header_actions %}
+{% if session.role == 'Scrum Master' %}
+<button class="btn btn-primary" onclick="openModal('createProjectModal')">
+    <i class="fa-solid fa-plus"></i> Create New Project
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.1rem; font-weight:700;">Projects Workspace</h3>
+        <span style="font-size:0.85rem; color:var(--text-muted);">Total Projects: {{ projects|length }}</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Project Name</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Dates</th>
+                    <th>Owner</th>
+                    <th>Team</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in projects %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('project.project_detail', project_id=p.id) }}" style="font-weight:700; font-size:0.95rem;">
+                            📁 {{ p.name }}
+                        </a>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">{{ p.description[:50] if p.description else 'No description' }}...</div>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ p.status|lower }}">
+                            {{ p.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% set pct = ((p.completed_task_count / p.task_count) * 100)|int if p.task_count and p.task_count > 0 else 0 %}
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="width:80px; background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden;">
+                                <div style="width: {{ pct }}%; background:var(--primary); height:100%;"></div>
+                            </div>
+                            <span style="font-size:0.8rem; font-weight:600; color:var(--text-secondary);">{{ pct }}%</span>
+                        </div>
+                    </td>
+                    <td style="font-size:0.8rem; color:var(--text-secondary);">
+                        {{ p.start_date }} to {{ p.end_date }}
+                    </td>
+                    <td><span style="font-weight:600; font-size:0.85rem;">{{ p.creator_name or 'System' }}</span></td>
+                    <td><i class="fa-solid fa-users"></i> {{ p.member_count }}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <a href="{{ url_for('project.project_detail', project_id=p.id) }}" class="btn btn-secondary btn-sm" title="View Project Details">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                            <a href="{{ url_for('task.kanban_board', project_id=p.id) }}" class="btn btn-secondary btn-sm" title="View Kanban Board">
+                                <i class="fa-solid fa-table-columns"></i> Kanban
+                            </a>
+                            {% if session.role == 'Scrum Master' %}
+                            <form action="{{ url_for('project.delete_project', project_id=p.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete project {{ p.name }}?');">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger);" title="Delete Project">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">
+                        No projects found. Click "Create New Project" to get started.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CREATE PROJECT MODAL -->
+{% if session.role == 'Scrum Master' %}
+<div id="createProjectModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-folder-plus"></i> Create Agile Project</h3>
+            <button class="close-btn" onclick="closeModal('createProjectModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('project.projects_list') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Project Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. AI Customer Portal" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Project scope and deliverables..."></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ today }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">End Date *</label>
+                        <input type="date" name="end_date" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Initial Status</label>
+                    <select name="status" class="form-control">
+                        <option value="Planning">Planning</option>
+                        <option value="Active" selected>Active</option>
+                        <option value="Completed">Completed</option>
+                        <option value="On Hold">On Hold</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create Project</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

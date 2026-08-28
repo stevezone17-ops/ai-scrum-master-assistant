@@ -1,0 +1,786 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Scrum Master Assistant{% endblock %}
+{% block page_title %}Agile Workspace Overview{% endblock %}
+
+{% block header_actions %}
+<div style="display:flex; gap:8px; flex-wrap:wrap;">
+    {% if session.role == 'Scrum Master' %}
+    <a href="{{ url_for('project.projects_list') }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-plus"></i> New Project
+    </a>
+    <a href="{{ url_for('sprint.sprints_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-bolt"></i> New Sprint
+    </a>
+    {% endif %}
+
+    {% if session.role in ['Scrum Master', 'Product Owner'] %}
+    <a href="{{ url_for('backlog.backlog_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-bookmark"></i> New User Story
+    </a>
+    <a href="{{ url_for('task.tasks_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-list-check"></i> New Task
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('ai.assistant_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-primary btn-sm" style="background:linear-gradient(135deg, #f59e0b, #d97706); border:none; font-weight:700;">
+        <i class="fa-solid fa-robot"></i> Ask AI Scrum Master
+    </a>
+    <a href="{{ url_for('task.kanban_board', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-table-columns"></i> Kanban Board
+    </a>
+    <a href="{{ url_for('report.reports_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-file-contract"></i> Reports
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- WELCOME BANNER & HEALTH INDICATOR -->
+<div class="card" style="margin-bottom:24px; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; background:linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); border-left: 4px solid var(--primary);">
+    <div>
+        <h2 style="font-size:1.3rem; font-weight:800; margin-bottom:4px;">
+            👋 Welcome back, {{ session.username or 'User' }}!
+            <span style="font-size:0.85rem; font-weight:600; color:var(--text-muted); margin-left:8px;">({{ session.role }})</span>
+        </h2>
+        <div style="font-size:0.85rem; color:var(--text-secondary);">
+            Viewing active project: <strong>{{ current_project.name if current_project else 'No active project' }}</strong>
+        </div>
+    </div>
+
+    <!-- PROJECT HEALTH INDICATOR (Requirement 6) -->
+    <div style="display:flex; align-items:center; gap:16px; background:rgba(255,255,255,0.03); padding:12px 20px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+        <div>
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Project Health</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                <span class="badge {{ health_badge_class }}" style="font-size:0.85rem; font-weight:800;">{{ health_status }}</span>
+            </div>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-secondary); max-width:280px; line-height:1.3;">
+            {{ health_explanation }}
+        </div>
+    </div>
+</div>
+
+<!-- 1. PROJECT OVERVIEW CARDS (Requirement 1) -->
+<div class="grid-cols-4" style="margin-bottom:24px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Projects Workspace</div>
+            <div class="stat-value">{{ total_projects }}</div>
+            <div class="stat-subtext">
+                <span style="color:var(--success);">{{ active_projects }} Active</span> &bull;
+                <span>{{ completed_projects }} Done</span>
+            </div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-solid fa-diagram-project"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Active Sprint</div>
+            {% if active_sprint %}
+            <div class="stat-value" style="font-size:1.3rem;">{{ active_sprint.name[:16] }}</div>
+            <div class="stat-subtext">
+                {{ active_sprint_stats.completed_points }}/{{ active_sprint_stats.total_points }} Points ({{ active_sprint_stats.progress_pct }}%)
+            </div>
+            {% else %}
+            <div class="stat-value" style="font-size:1.1rem; color:var(--text-muted);">No Active Sprint</div>
+            <div class="stat-subtext">Plan a sprint in Sprints module</div>
+            {% endif %}
+        </div>
+        <div class="stat-icon icon-purple"><i class="fa-solid fa-bolt"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Development Tasks</div>
+            <div class="stat-value" style="color:var(--info);">{{ completed_tasks }}/{{ total_tasks }}</div>
+            <div class="stat-subtext">
+                <span style="color:var(--danger); font-weight:700;">{{ overdue_count }} Overdue</span> &bull; {{ total_actual_hours }}/{{ total_estimated_hours }}h Logged
+            </div>
+        </div>
+        <div class="stat-icon icon-emerald"><i class="fa-solid fa-list-check"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Product Backlog</div>
+            <div class="stat-value">{{ backlog_stats.total_stories }} Stories</div>
+            <div class="stat-subtext">
+                {{ backlog_stats.completed_stories }} Done &bull; {{ backlog_stats.total_points }} Story Points
+            </div>
+        </div>
+        <div class="stat-icon icon-amber"><i class="fa-solid fa-bookmark"></i></div>
+    </div>
+</div>
+
+<!-- AI SPRINT RISK ASSESSMENT CARD (Step 12A) -->
+<div class="card" style="margin-bottom:24px; border:1px solid rgba(99, 102, 241, 0.3); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-brain" style="color:var(--primary);"></i> AI Sprint Risk Assessment
+            <span style="font-size:0.75rem; background:rgba(99,102,241,0.15); color:var(--primary); padding:2px 8px; border-radius:12px; border:1px solid rgba(99,102,241,0.3);">RandomForest ML</span>
+        </h3>
+        {% if ai_risk_assessment and ai_risk_assessment.has_sprint and not ai_risk_assessment.error %}
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">Predicted Risk:</span>
+            <span class="badge {{ ai_risk_assessment.badge_class }}" style="font-size:0.85rem; font-weight:800; padding:4px 10px;">
+                {{ ai_risk_assessment.risk_level }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not ai_risk_assessment or not ai_risk_assessment.has_sprint %}
+    <!-- NO ACTIVE SPRINT STATE (Requirement 8) -->
+    <div style="text-align:center; padding:24px 16px; color:var(--text-muted);">
+        <i class="fa-solid fa-robot" style="font-size:2rem; margin-bottom:8px; opacity:0.5; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">No active sprint available for AI risk analysis.</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Start an active sprint to generate real-time machine learning risk predictions.</div>
+    </div>
+
+    {% elif ai_risk_assessment.error %}
+    <!-- MODEL ERROR / MISSING STATE (Requirement 9) -->
+    <div style="text-align:center; padding:24px 16px; color:var(--warning);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:1.8rem; margin-bottom:8px; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">AI risk analysis is currently unavailable.</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">The prediction model could not be loaded or evaluated.</div>
+    </div>
+
+    {% else %}
+    <!-- ACTIVE PREDICTION RESULT (Requirements 5, 6, 7) -->
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+        <!-- Left Column: Risk Result & Dynamic Explanation -->
+        <div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:6px;">
+                Analyzing Active Sprint: <strong>{{ ai_risk_assessment.sprint_name }}</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:16px;">
+                <div style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;">
+                    <i class="fa-solid fa-circle-info" style="color:var(--info);"></i> Model Assessment Summary
+                </div>
+                <div style="font-size:0.9rem; color:var(--text-primary); line-height:1.4;">
+                    {{ ai_risk_assessment.explanation }}
+                </div>
+            </div>
+
+            <!-- Contributing Risk Factors (Requirement 7) -->
+            <div>
+                <div style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:8px;">
+                    <i class="fa-solid fa-sliders" style="color:var(--warning);"></i> Why is the Sprint at Risk? (Key Risk Factors)
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    {% for factor in ai_risk_assessment.risk_factors %}
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:8px 12px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">{{ factor.name }}</div>
+                            <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">{{ factor.value }}</div>
+                        </div>
+                        {% if factor.severity == 'high' %}
+                        <span class="badge badge-urgent" style="font-size:0.65rem;">HIGH IMPACT</span>
+                        {% elif factor.severity == 'medium' %}
+                        <span class="badge badge-high" style="font-size:0.65rem;">MED IMPACT</span>
+                        {% else %}
+                        <span class="badge badge-secondary" style="font-size:0.65rem;">NORMAL</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Model Confidence & Class Probabilities -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px;">
+            <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Model Confidence</div>
+            <div style="font-size:1.6rem; font-weight:800; color:var(--primary); margin-top:2px;">
+                {{ ai_risk_assessment.confidence_pct }}%
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:14px;">Probability distribution across risk tiers:</div>
+
+            <!-- Probability Bars -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:4px;">
+                        <span style="color:var(--success); font-weight:600;">LOW Risk</span>
+                        <span>{{ ai_risk_assessment.probabilities.LOW }}%</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden;">
+                        <div style="width: {{ ai_risk_assessment.probabilities.LOW }}%; background:var(--success); height:100%;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:4px;">
+                        <span style="color:var(--warning); font-weight:600;">MEDIUM Risk</span>
+                        <span>{{ ai_risk_assessment.probabilities.MEDIUM }}%</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden;">
+                        <div style="width: {{ ai_risk_assessment.probabilities.MEDIUM }}%; background:var(--warning); height:100%;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:4px;">
+                        <span style="color:var(--danger); font-weight:600;">HIGH Risk</span>
+                        <span>{{ ai_risk_assessment.probabilities.HIGH }}%</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden;">
+                        <div style="width: {{ ai_risk_assessment.probabilities.HIGH }}%; background:var(--danger); height:100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- AI SCRUM MASTER RECOMMENDATIONS CARD (Step 12B) -->
+<div class="card" style="margin-bottom:24px; border:1px solid rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-lightbulb" style="color: #f59e0b;"></i> AI Scrum Master Recommendations
+            <span style="font-size:0.75rem; background:rgba(245,158,11,0.15); color:#f59e0b; padding:2px 8px; border-radius:12px; border:1px solid rgba(245,158,11,0.3);">Rule-Based AI</span>
+        </h3>
+    </div>
+
+    {% if not ai_recommendations or not ai_recommendations.has_sprint %}
+    <!-- NO ACTIVE SPRINT STATE -->
+    <div style="text-align:center; padding:20px 16px; color:var(--text-muted);">
+        <i class="fa-solid fa-folder-open" style="font-size:1.8rem; margin-bottom:8px; opacity:0.5; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">No active sprint available for AI recommendations.</div>
+    </div>
+
+    {% elif ai_recommendations.error %}
+    <!-- ERROR STATE -->
+    <div style="text-align:center; padding:20px 16px; color:var(--warning);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:1.8rem; margin-bottom:8px; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">AI recommendation engine is currently unavailable.</div>
+    </div>
+
+    {% elif not ai_recommendations.recommendations %}
+    <!-- EMPTY STATE (Requirement 7) -->
+    <div style="background:rgba(34, 197, 94, 0.08); border:1px solid rgba(34, 197, 94, 0.3); border-radius:var(--radius-md); padding:16px; display:flex; align-items:center; gap:12px; color:var(--success);">
+        <i class="fa-solid fa-circle-check" style="font-size:1.4rem;"></i>
+        <div style="font-size:0.92rem; font-weight:600;">✓ No major issues detected. The sprint is progressing normally.</div>
+    </div>
+
+    {% else %}
+    <!-- RECOMMENDATIONS LIST (Requirements 4, 5, 6, 8) -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+        {% for rec in ai_recommendations.recommendations %}
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:14px 16px; display:flex; align-items:flex-start; gap:14px;">
+            <div style="padding-top:2px;">
+                {% if rec.priority == 'HIGH' %}
+                <span class="badge badge-urgent" style="font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                    🔴 HIGH
+                </span>
+                {% elif rec.priority == 'MEDIUM' %}
+                <span class="badge badge-high" style="font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                    🟡 MEDIUM
+                </span>
+                {% else %}
+                <span class="badge badge-active" style="font-size:0.75rem; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                    🟢 LOW
+                </span>
+                {% endif %}
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:0.92rem; font-weight:700; color:var(--text-primary); margin-bottom:4px;">
+                    {{ rec.title }}
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
+                    Recommendation: {{ rec.description }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- AI DAILY STAND-UP SUMMARY CARD (Step 12C) -->
+<div class="card" style="margin-bottom:24px; border:1px solid rgba(59, 130, 246, 0.3); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-comments" style="color:var(--info);"></i> AI Daily Stand-up Summary
+            <span style="font-size:0.75rem; background:rgba(59,130,246,0.15); color:var(--info); padding:2px 8px; border-radius:12px; border:1px solid rgba(59,130,246,0.3);">NLP Analyzer</span>
+        </h3>
+        {% if current_project %}
+        <a href="{{ url_for('standup.standup_view', project_id=current_project.id) }}" class="btn btn-outline btn-sm" style="font-size:0.8rem; padding:4px 10px;">
+            <i class="fa-solid fa-arrow-right"></i> Open Stand-up Board
+        </a>
+        {% endif %}
+    </div>
+
+    {% if not ai_standup_summary or not ai_standup_summary.has_updates %}
+    <!-- NO STAND-UP UPDATES STATE -->
+    <div style="text-align:center; padding:20px 16px; color:var(--text-muted);">
+        <i class="fa-solid fa-clipboard-user" style="font-size:1.8rem; margin-bottom:8px; opacity:0.5; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">No stand-up updates submitted for today yet.</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Team daily updates and detected blockers will appear here once developers submit their stand-ups.</div>
+    </div>
+
+    {% elif ai_standup_summary.error %}
+    <!-- ERROR STATE -->
+    <div style="text-align:center; padding:20px 16px; color:var(--warning);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:1.8rem; margin-bottom:8px; display:block;"></i>
+        <div style="font-size:0.9rem; font-weight:600;">AI stand-up analysis is currently unavailable.</div>
+    </div>
+
+    {% else %}
+    <!-- REPEATED BLOCKER ALERTS (Requirement 9) -->
+    {% if ai_standup_summary.repeated_blockers %}
+    <div style="margin-bottom:16px; display:flex; flex-direction:column; gap:8px;">
+        {% for alert in ai_standup_summary.repeated_blockers %}
+        <div style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); border-radius:var(--radius-md); padding:12px 14px; display:flex; align-items:center; gap:10px; color:#f87171;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:1.1rem; flex-shrink:0;"></i>
+            <div style="font-size:0.86rem; font-weight:600;">{{ alert.message }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- METRICS ROW -->
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Reporting Progress</div>
+            <div style="font-size:1.25rem; font-weight:800; color:var(--primary); margin-top:2px;">
+                {{ ai_standup_summary.developers_reported }}/{{ ai_standup_summary.total_team_devs }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">developers reported</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Blockers Detected</div>
+            <div style="font-size:1.25rem; font-weight:800; color:{% if ai_standup_summary.blocker_count > 0 %}var(--danger){% else %}var(--success){% endif %}; margin-top:2px;">
+                {{ ai_standup_summary.blocker_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">high priority blockers</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Potential Issues</div>
+            <div style="font-size:1.25rem; font-weight:800; color:{% if ai_standup_summary.potential_issue_count > 0 %}var(--warning){% else %}var(--success){% endif %}; margin-top:2px;">
+                {{ ai_standup_summary.potential_issue_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">delays or risks</div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:10px 12px; border-radius:var(--radius-sm); text-align:center;">
+            <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">On Schedule</div>
+            <div style="font-size:1.25rem; font-weight:800; color:var(--success); margin-top:2px;">
+                {{ ai_standup_summary.no_issue_count }}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">progressing normally</div>
+        </div>
+    </div>
+
+    <!-- BLOCKERS & POTENTIAL ISSUES LIST (Requirement 8) -->
+    <div style="display:grid; grid-template-columns: {% if ai_standup_summary.high_priority_blockers and ai_standup_summary.potential_issues %}1fr 1fr{% else %}1fr{% endif %}; gap:14px;">
+        {% if ai_standup_summary.high_priority_blockers %}
+        <div style="background:rgba(239, 68, 68, 0.04); border:1px solid rgba(239, 68, 68, 0.2); border-radius:var(--radius-md); padding:12px 14px;">
+            <div style="font-size:0.78rem; font-weight:700; color:var(--danger); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-ban"></i> High Priority Blockers
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                {% for b in ai_standup_summary.high_priority_blockers %}
+                <div style="font-size:0.85rem; background:rgba(0,0,0,0.2); padding:8px 10px; border-radius:var(--radius-sm); border-left:3px solid var(--danger);">
+                    <strong style="color:var(--text-primary);">{{ b.developer }}:</strong> <span style="color:#f87171;">{{ b.blocker }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if ai_standup_summary.potential_issues %}
+        <div style="background:rgba(245, 158, 11, 0.04); border:1px solid rgba(245, 158, 11, 0.2); border-radius:var(--radius-md); padding:12px 14px;">
+            <div style="font-size:0.78rem; font-weight:700; color:var(--warning); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Potential Issues & Delays
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                {% for p in ai_standup_summary.potential_issues %}
+                <div style="font-size:0.85rem; background:rgba(0,0,0,0.2); padding:8px 10px; border-radius:var(--radius-sm); border-left:3px solid var(--warning);">
+                    <strong style="color:var(--text-primary);">{{ p.developer }}:</strong> <span style="color:#fbbf24;">{{ p.issue }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not ai_standup_summary.high_priority_blockers and not ai_standup_summary.potential_issues %}
+        <div style="background:rgba(34, 197, 94, 0.06); border:1px solid rgba(34, 197, 94, 0.2); border-radius:var(--radius-md); padding:12px 14px; display:flex; align-items:center; gap:8px; color:var(--success);">
+            <i class="fa-solid fa-circle-check"></i>
+            <span style="font-size:0.88rem; font-weight:600;">All reporting developers have no active blockers or impediments.</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- DEVELOPER DASHBOARD SECTION (Requirement 10: Role Customized for Developer) -->
+{% if session.role == 'Developer' %}
+<div class="card" style="margin-bottom:24px; border:1px solid var(--primary); background:rgba(99,102,241,0.03);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.1rem; font-weight:800; color:var(--primary);">
+            <i class="fa-solid fa-user-gear"></i> My Assigned Developer Workspace
+        </h3>
+        <a href="{{ url_for('task.kanban_board', project_id=current_project.id if current_project else 1) }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-table-columns"></i> View My Kanban Tasks
+        </a>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:20px;">
+        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Assigned Tasks</div>
+            <div style="font-size:1.4rem; font-weight:800; margin-top:4px;">{{ dev_assigned_tasks|length }}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Completed Tasks</div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--success); margin-top:4px;">{{ dev_completed_tasks|length }}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Pending Tasks</div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--warning); margin-top:4px;">{{ dev_pending_tasks|length }}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:var(--radius-md); text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">My Workload Allocation</div>
+            <div style="font-size:1.4rem; font-weight:800; color:var(--primary); margin-top:4px;">
+                {{ dev_workload_info.workload_pct if dev_workload_info else 0.0 }}%
+            </div>
+        </div>
+    </div>
+
+    <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:12px;">My Assigned Tasks List:</h4>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Story Link</th>
+                    <th>Priority</th>
+                    <th>Hours (Act / Est)</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in dev_assigned_tasks %}
+                <tr>
+                    <td style="font-weight:700;">{{ t.title }}</td>
+                    <td style="font-size:0.8rem; color:var(--primary);">📌 {{ t.story_title or '-' }}</td>
+                    <td>
+                        <span class="badge {% if t.priority == 'Critical' %}badge-urgent{% elif t.priority == 'High' %}badge-high{% else %}badge-medium{% endif %}">
+                            {{ t.priority }}
+                        </span>
+                    </td>
+                    <td style="font-weight:700;">{{ t.actual_hours }}/{{ t.estimated_hours }}h</td>
+                    <td><span class="badge badge-planned">{{ t.status }}</span></td>
+                    <td style="font-size:0.8rem;">
+                        {{ t.due_date or '-' }}
+                        {% if t.is_overdue %}<span class="badge badge-urgent" style="font-size:0.6rem;">OVERDUE</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('task.tasks_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-clock"></i> Log Hours
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">
+                        No tasks currently assigned to you in this project.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- 2 & 3. ACTIVE SPRINT & TASK ANALYTICS SECTION -->
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; margin-bottom:24px;">
+    <!-- Active Sprint Card (Requirement 2) -->
+    <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <h3 style="font-size:1.1rem; font-weight:700;">
+                <i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Active Sprint Metrics
+            </h3>
+            {% if active_sprint %}
+            <span class="badge badge-active">{{ active_sprint.status }}</span>
+            {% endif %}
+        </div>
+
+        {% if active_sprint %}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div>
+                <div style="font-size:1.1rem; font-weight:800; color:var(--text-primary);">{{ active_sprint.name }}</div>
+                <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
+                    Goal: {{ active_sprint.goal or 'No goal defined' }}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:0.82rem; color:var(--text-muted);">Duration</div>
+                <div style="font-size:0.88rem; font-weight:700; color:var(--text-secondary);">
+                    {{ active_sprint.start_date }} to {{ active_sprint.end_date }}
+                </div>
+                <div style="font-size:0.8rem; color:var(--info); font-weight:700; margin-top:2px;">
+                    ⏱️ {{ days_remaining }} Days Remaining
+                </div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:16px; background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-md);">
+            <div>
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Story Points</div>
+                <div style="font-size:1.1rem; font-weight:800; color:var(--primary); margin-top:2px;">
+                    {{ active_sprint_stats.completed_points }} / {{ active_sprint_stats.total_points }} pts
+                </div>
+            </div>
+
+            <div>
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Sprint Velocity</div>
+                <div style="font-size:1.1rem; font-weight:800; color:var(--success); margin-top:2px;">
+                    {{ sprint_db_stats.average_velocity or active_sprint_stats.completed_points }} pts/sprint
+                </div>
+            </div>
+
+            <div>
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase;">Sprint Progress</div>
+                <div style="font-size:1.1rem; font-weight:800; color:var(--info); margin-top:2px;">
+                    {{ active_sprint_stats.progress_pct }}%
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px; font-weight:600;">
+                <span>Sprint Completion Progress</span>
+                <span>{{ active_sprint_stats.progress_pct }}%</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
+                <div style="width: {{ active_sprint_stats.progress_pct }}%; background:var(--primary); height:100%;"></div>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:36px; color:var(--text-muted);">
+            <i class="fa-solid fa-calendar-xmark" style="font-size:2rem; margin-bottom:12px; opacity:0.5; display:block;"></i>
+            No active sprint running for this project.
+            {% if session.role == 'Scrum Master' %}
+            <br><a href="{{ url_for('sprint.sprints_view', project_id=current_project.id) }}" class="btn btn-primary btn-sm" style="margin-top:12px;">Create New Sprint</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Task Distribution Chart (Requirement 3) -->
+    <div class="card">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <i class="fa-solid fa-chart-pie" style="color:var(--info);"></i> Task Status Distribution
+        </h3>
+
+        <div style="height:190px; position:relative;">
+            <canvas id="taskStatusChart"></canvas>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:16px; pt:12px; border-top:1px dashed var(--border-color); font-size:0.8rem;">
+            <div><span style="color:var(--text-muted);">To Do:</span> <strong>{{ todo_count }}</strong></div>
+            <div><span style="color:var(--info);">In Progress:</span> <strong>{{ in_progress_count }}</strong></div>
+            <div><span style="color:var(--warning);">Testing:</span> <strong>{{ testing_count }}</strong></div>
+            <div><span style="color:var(--success);">Done:</span> <strong>{{ completed_tasks }}</strong></div>
+        </div>
+    </div>
+</div>
+
+<!-- 4 & 5. SPRINT PROGRESS CHART & TEAM WORKLOAD SECTION -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:24px;">
+    <!-- Sprint Velocity Chart (Requirement 4) -->
+    <div class="card">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <i class="fa-solid fa-chart-line" style="color:var(--primary);"></i> Sprint Velocity & History
+        </h3>
+
+        <div style="height:220px; position:relative;">
+            <canvas id="velocityChart"></canvas>
+        </div>
+
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:12px; text-align:center;">
+            Track historical story points delivered per sprint to forecast future team velocity.
+        </div>
+    </div>
+
+    <!-- Team Workload Distribution (Requirement 5) -->
+    <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <h3 style="font-size:1.1rem; font-weight:700;">
+                <i class="fa-solid fa-users" style="color:var(--success);"></i> Team Workload Capacity
+            </h3>
+            <a href="{{ url_for('project.team_management', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">Manage Team</a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Developer</th>
+                        <th>Tasks (Done/Total)</th>
+                        <th>Hours (Act/Est)</th>
+                        <th>Capacity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in workload %}
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <div class="user-avatar" style="width:22px; height:22px; font-size:0.65rem;">{{ w.username[0]|upper }}</div>
+                                <span style="font-weight:700; font-size:0.85rem;">{{ w.username }}</span>
+                            </div>
+                        </td>
+                        <td style="font-size:0.82rem;">
+                            {{ w.completed_tasks }}/{{ w.assigned_tasks }}
+                        </td>
+                        <td style="font-size:0.82rem; font-weight:600;">
+                            {{ w.act_hours }}/{{ w.est_hours }}h
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="flex:1; background:rgba(255,255,255,0.08); height:6px; border-radius:3px; overflow:hidden; min-width:60px;">
+                                    <div style="width: {{ [w.workload_pct, 100]|min }}%; background:{% if w.workload_pct > 100 %}var(--danger){% elif w.workload_pct > 80 %}var(--warning){% else %}var(--success){% endif %}; height:100%;"></div>
+                                </div>
+                                <span style="font-size:0.75rem; font-weight:700; color:{% if w.workload_pct > 100 %}var(--danger){% else %}var(--text-secondary){% endif %};">
+                                    {{ w.workload_pct }}%
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">
+                            No team workload data available.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 7 & 8. OVERDUE TASKS & RECENT ACTIVITY FEED -->
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; margin-bottom:24px;">
+    <!-- Overdue Tasks (Requirement 7) -->
+    <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <h3 style="font-size:1.1rem; font-weight:700; color:var(--danger);">
+                <i class="fa-solid fa-triangle-exclamation"></i> Critical & Overdue Tasks ({{ overdue_count }})
+            </h3>
+            <a href="{{ url_for('task.tasks_view', project_id=current_project.id if current_project else 1) }}" class="btn btn-secondary btn-sm">View All Tasks</a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Assignee</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Est / Act</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in overdue_tasks_list %}
+                    <tr style="border-left: 3px solid var(--danger);">
+                        <td style="font-weight:700; font-size:0.88rem;">{{ t.title }}</td>
+                        <td style="font-size:0.82rem;">
+                            {% if t.assignee_name %}
+                                👤 {{ t.assignee_name }}
+                            {% else %}
+                                <span style="color:var(--text-muted);">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.82rem; font-weight:700; color:var(--danger);">
+                            {{ t.due_date }}
+                        </td>
+                        <td><span class="badge badge-urgent">{{ t.status }}</span></td>
+                        <td style="font-size:0.8rem; font-weight:600;">{{ t.actual_hours }}/{{ t.estimated_hours }}h</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding:24px; color:var(--success); font-weight:600;">
+                            <i class="fa-solid fa-circle-check" style="font-size:1.2rem; margin-right:6px;"></i> No overdue tasks! All work is on track.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Activity Feed (Requirement 8) -->
+    <div class="card">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--info);"></i> Recent Activity Feed
+        </h3>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            {% for act in recent_activities %}
+            <div style="display:flex; gap:10px; font-size:0.82rem; padding-bottom:10px; border-bottom:1px dashed var(--border-color);">
+                <div style="color:var(--primary); font-size:0.9rem; margin-top:2px;">
+                    <i class="fa-solid fa-tasks"></i>
+                </div>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">{{ act.title }}</div>
+                    <div style="color:var(--text-muted); font-size:0.75rem;">
+                        {{ act.action }} &bull; {{ act.user }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div style="color:var(--text-muted); text-align:center; padding:20px; font-size:0.85rem;">
+                No recent activity recorded yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const taskStats = {
+        todo: {{ todo_count }},
+        in_progress: {{ in_progress_count }},
+        testing: {{ testing_count }},
+        done: {{ completed_tasks }}
+    };
+
+    const workloadData = [
+        {% for w in workload %}
+        { username: '{{ w.username }}', est_hours: {{ w.est_hours }}, act_hours: {{ w.act_hours }} },
+        {% endfor %}
+    ];
+
+    const velocityData = {
+        labels: [
+            {% for v in velocity_history %}
+            '{{ v.sprint_name }}',
+            {% endfor %}
+        ],
+        values: [
+            {% for v in velocity_history %}
+            {{ v.completed_points }},
+            {% endfor %}
+        ]
+    };
+
+    if (typeof renderDashboardCharts === 'function') {
+        renderDashboardCharts(taskStats, workloadData, velocityData);
+    }
+});
+</script>
+{% endblock %}

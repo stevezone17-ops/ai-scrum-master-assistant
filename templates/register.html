@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - AI Scrum Master Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #1e1b4b 0%, #0b0f19 60%);
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 460px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 36px;
+            box-shadow: var(--shadow-lg);
+        }
+        .auth-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="auth-brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div>
+                <h2 style="font-weight:800; font-size:1.3rem;">AgileScrum AI</h2>
+                <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Scrum Master Assistant</span>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom:6px; font-weight:700;">Create Account</h3>
+        <p style="color:var(--text-secondary); font-size:0.88rem; margin-bottom:24px;">Join your Agile software team workspace</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                  <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('auth.register') }}" method="POST">
+            <div class="form-group">
+                <label class="form-label">Full Name / Username</label>
+                <input type="text" name="username" class="form-control" placeholder="e.g. Alex Rivera" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" name="email" class="form-control" placeholder="alex@agilescrum.io" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Agile System Role</label>
+                <select name="role" class="form-control" required>
+                    <option value="Scrum Master">Scrum Master</option>
+                    <option value="Developer" selected>Developer</option>
+                    <option value="Product Owner">Product Owner</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; margin-top:8px;">
+                <i class="fa-solid fa-user-plus"></i> Register Account
+            </button>
+        </form>
+
+        <p style="text-align:center; font-size:0.85rem; color:var(--text-secondary); margin-top:20px;">
+            Already have an account? <a href="{{ url_for('auth.login') }}">Log in here</a>
+        </p>
+    </div>
+</body>
+</html>

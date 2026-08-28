@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Agile Reports - {{ project.name }}{% endblock %}
+{% block page_title %}Agile Project & Sprint Reports{% endblock %}
+
+{% block header_actions %}
+<div style="display:flex; gap:10px; align-items:center;">
+    <a href="{{ url_for('report.export_pdf_report', project_id=project.id, report_type=report_type, sprint_id=current_sprint.id if current_sprint else '') }}" class="btn btn-primary" style="background:linear-gradient(135deg, #ef4444, #dc2626); border:none; font-weight:700;">
+        <i class="fa-solid fa-file-pdf"></i> Export PDF
+    </a>
+    <button class="btn btn-secondary" onclick="window.print()">
+        <i class="fa-solid fa-print"></i> Print
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- REPORT TYPE NAV TABS & SELECTOR -->
+<div class="card" style="margin-bottom:24px; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <a href="{{ url_for('report.reports_view', project_id=project.id, report_type='sprint', sprint_id=current_sprint.id if current_sprint else '') }}" class="btn {% if report_type == 'sprint' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+            <i class="fa-solid fa-bolt"></i> Sprint Report
+        </a>
+        <a href="{{ url_for('report.reports_view', project_id=project.id, report_type='project') }}" class="btn {% if report_type == 'project' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+            <i class="fa-solid fa-chart-pie"></i> Project Report
+        </a>
+    </div>
+
+    {% if report_type == 'sprint' and sprints %}
+    <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">Select Sprint:</span>
+        <select onchange="window.location.href='{{ url_for('report.reports_view', project_id=project.id, report_type='sprint') }}&sprint_id='+this.value" class="form-control" style="width:auto; display:inline-block; font-size:0.85rem; padding:4px 10px;">
+            {% for s in sprints %}
+            <option value="{{ s.id }}" {% if current_sprint and current_sprint.id == s.id %}selected{% endif %}>
+                ⚡ {{ s.name }} ({{ s.status }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ======================================================================= -->
+<!-- SPRINT REPORT VIEW -->
+<!-- ======================================================================= -->
+{% if report_type == 'sprint' %}
+{% if current_sprint and sprint_data %}
+{% set metrics = sprint_data.metrics %}
+
+<div class="card print-area" style="background:#fff; color:#1e293b; padding:36px; border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);">
+    <!-- REPORT HEADER -->
+    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #e2e8f0; padding-bottom:20px; margin-bottom:24px;">
+        <div>
+            <h2 style="font-size:1.6rem; font-weight:800; color:#0f172a; margin-bottom:4px;">
+                AGILE SPRINT SUMMARY REPORT
+            </h2>
+            <div style="font-size:0.9rem; color:#64748b;">
+                Project: <strong>{{ project.name }}</strong> | Sprint: <strong>{{ current_sprint.name }}</strong> ({{ current_sprint.start_date }} to {{ current_sprint.end_date }})
+            </div>
+        </div>
+
+        {% if sprint_data.ai_risk %}
+        <div style="text-align:right;">
+            <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase;">AI Risk Level</div>
+            {% set r_level = sprint_data.ai_risk.risk_level or sprint_data.ai_risk.predicted_risk or 'UNKNOWN' %}
+            <span style="display:inline-block; font-weight:800; padding:4px 12px; border-radius:12px; margin-top:4px; font-size:0.85rem; {% if r_level == 'HIGH' %}background:#fee2e2; color:#991b1b;{% elif r_level == 'MEDIUM' %}background:#fef3c7; color:#92400e;{% else %}background:#dcfce7; color:#166534;{% endif %}">
+                {{ r_level }} RISK
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SPRINT GOAL -->
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px; border-radius:8px; margin-bottom:24px;">
+        <h4 style="font-size:0.8rem; text-transform:uppercase; color:#64748b; font-weight:700; margin-bottom:4px;">
+            Sprint Goal
+        </h4>
+        <p style="font-size:0.95rem; color:#0f172a; font-weight:600; margin:0;">
+            {{ current_sprint.goal or 'No specific sprint goal recorded.' }}
+        </p>
+    </div>
+
+    <!-- METRICS GRID -->
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:28px;">
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Tasks Completed</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#059669;">{{ metrics.completed_tasks }} / {{ metrics.total_tasks }}</div>
+            <div style="font-size:0.75rem; color:#64748b;">{{ metrics.task_pct }}% complete</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Story Points / Velocity</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#4f46e5;">{{ metrics.completed_sp }} / {{ metrics.total_sp }} pts</div>
+            <div style="font-size:0.75rem; color:#64748b;">Velocity: {{ metrics.velocity }} pts</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Hours Worked</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#0284c7;">{{ metrics.actual_hours }}h</div>
+            <div style="font-size:0.75rem; color:#64748b;">Estimated: {{ metrics.estimated_hours }}h</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Overdue Tasks</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#dc2626;">{{ metrics.overdue_tasks }}</div>
+            <div style="font-size:0.75rem; color:#64748b;">Pending: {{ metrics.pending_tasks }}</div>
+        </div>
+    </div>
+
+    <!-- AI RECOMMENDATIONS SECTION -->
+    {% if sprint_data.recommendations %}
+    <div style="margin-bottom:28px; background:#eff6ff; border:1px solid #bfdbfe; padding:20px; border-radius:8px;">
+        <h4 style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-robot"></i> AI Machine Learning Sprint Evaluation & Recommendations
+        </h4>
+        <ul style="padding-left:20px; font-size:0.88rem; color:#1e293b; display:flex; flex-direction:column; gap:6px; margin:0;">
+            {% for rec in sprint_data.recommendations %}
+            <li><strong>[{{ rec.priority }}] {{ rec.title }}:</strong> {{ rec.description }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- BLOCKERS SUMMARY -->
+    {% if sprint_data.blockers %}
+    <div style="background:#fff1f2; border:1px solid #fecdd3; padding:16px; border-radius:8px; margin-bottom:28px;">
+        <h4 style="font-size:0.9rem; font-weight:800; color:#9f1239; margin-bottom:8px;">
+            ⚠️ Identified Daily Stand-up Blockers
+        </h4>
+        <ul style="padding-left:20px; font-size:0.85rem; color:#881337; margin:0;">
+            {% for b in sprint_data.blockers %}
+            <li>{{ b }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- COMPLETED VS INCOMPLETE TASKS TABLE -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div>
+            <h4 style="font-size:0.95rem; font-weight:800; color:#059669; margin-bottom:12px;">
+                ✅ Completed Tasks ({{ sprint_data.completed_tasks|length }})
+            </h4>
+            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <thead>
+                    <tr style="background:#f1f5f9; text-align:left;">
+                        <th style="padding:8px;">Task Title</th>
+                        <th style="padding:8px;">Assignee</th>
+                        <th style="padding:8px;">Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in sprint_data.completed_tasks %}
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:8px; font-weight:600;">{{ t.title }}</td>
+                        <td style="padding:8px;">{{ t.assignee_name or 'Unassigned' }}</td>
+                        <td style="padding:8px;">{{ t.actual_hours }}h</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="padding:12px; color:#64748b;">No tasks completed yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <h4 style="font-size:0.95rem; font-weight:800; color:#dc2626; margin-bottom:12px;">
+                ⏳ Incomplete Tasks ({{ sprint_data.incomplete_tasks|length }})
+            </h4>
+            <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <thead>
+                    <tr style="background:#f1f5f9; text-align:left;">
+                        <th style="padding:8px;">Task Title</th>
+                        <th style="padding:8px;">Assignee</th>
+                        <th style="padding:8px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in sprint_data.incomplete_tasks %}
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:8px; font-weight:600;">{{ t.title }}</td>
+                        <td style="padding:8px;">{{ t.assignee_name or 'Unassigned' }}</td>
+                        <td style="padding:8px;"><span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px;">{{ t.status }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="padding:12px; color:#059669;">All sprint tasks completed!</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card" style="padding:40px; text-align:center; color:var(--text-muted);">
+    <i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:12px;"></i>
+    <div>No sprint selected or no sprint data available.</div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- ======================================================================= -->
+<!-- PROJECT REPORT VIEW -->
+<!-- ======================================================================= -->
+{% if report_type == 'project' and project_metrics %}
+<div class="card print-area" style="background:#fff; color:#1e293b; padding:36px; border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);">
+    <!-- REPORT HEADER -->
+    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #e2e8f0; padding-bottom:20px; margin-bottom:24px;">
+        <div>
+            <h2 style="font-size:1.6rem; font-weight:800; color:#0f172a; margin-bottom:4px;">
+                PROJECT OVERVIEW REPORT
+            </h2>
+            <div style="font-size:0.9rem; color:#64748b;">
+                Project: <strong>{{ project.name }}</strong> | Dates: {{ project.start_date }} to {{ project.end_date }}
+            </div>
+        </div>
+
+        <div style="text-align:right;">
+            <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase;">Project Health</div>
+            <span style="display:inline-block; font-weight:800; padding:4px 12px; border-radius:12px; margin-top:4px; font-size:0.85rem; {% if project_metrics.health == 'Healthy' %}background:#dcfce7; color:#166534;{% elif project_metrics.health == 'Needs Attention' %}background:#fef3c7; color:#92400e;{% else %}background:#fee2e2; color:#991b1b;{% endif %}">
+                {{ project_metrics.health }}
+            </span>
+        </div>
+    </div>
+
+    <!-- METRICS GRID -->
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:28px;">
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Overall Progress</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#059669;">{{ project_metrics.progress_pct }}%</div>
+            <div style="font-size:0.75rem; color:#64748b;">{{ project_metrics.completed_tasks }} / {{ project_metrics.total_tasks }} tasks</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Team Members</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#4f46e5;">{{ project_metrics.team_size }}</div>
+            <div style="font-size:0.75rem; color:#64748b;">Active developers</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Sprints Overview</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#0284c7;">{{ project_metrics.completed_sprints }} / {{ project_metrics.total_sprints }}</div>
+            <div style="font-size:0.75rem; color:#64748b;">Completed sprints</div>
+        </div>
+
+        <div style="background:#f1f5f9; padding:16px; border-radius:8px; text-align:center;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Backlog Items</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#d97706;">{{ project_metrics.total_stories }}</div>
+            <div style="font-size:0.75rem; color:#64748b;">{{ project_metrics.total_sp }} story points</div>
+        </div>
+    </div>
+
+    <!-- AI EVALUATION SECTION -->
+    {% if recommendations %}
+    <div style="margin-bottom:28px; background:#eff6ff; border:1px solid #bfdbfe; padding:20px; border-radius:8px;">
+        <h4 style="font-size:0.95rem; font-weight:800; color:#1e40af; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-robot"></i> AI Project Health & Recommendations
+        </h4>
+        <ul style="padding-left:20px; font-size:0.88rem; color:#1e293b; display:flex; flex-direction:column; gap:6px; margin:0;">
+            {% for rec in recommendations %}
+            <li><strong>[{{ rec.priority }}] {{ rec.title }}:</strong> {{ rec.description }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+@media print {
+    .sidebar, .topbar, .btn, .card:not(.print-area) {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    .print-area {
+        box-shadow: none !important;
+        border: none !important;
+    }
+}
+</style>
+{% endblock %}

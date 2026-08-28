@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Sprint Management - {{ project.name }}{% endblock %}
+{% block page_title %}Sprint Management{% endblock %}
+
+{% block header_actions %}
+{% if session.role == 'Scrum Master' %}
+<button class="btn btn-primary" onclick="openModal('createSprintModal')">
+    <i class="fa-solid fa-plus"></i> Create New Sprint
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- SPRINT SUMMARY & VELOCITY STRIP -->
+<div class="grid-cols-4" style="margin-bottom:24px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Sprints</div>
+            <div class="stat-value">{{ sprints|length }}</div>
+            <div class="stat-subtext">Project Iterations</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-solid fa-person-running"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Active Sprint</div>
+            <div class="stat-value" style="color:var(--success);">
+                {% set active_count = sprints | selectattr('status', 'equalto', 'Active') | list | length %}
+                {{ active_count }} Active
+            </div>
+            <div class="stat-subtext">Currently running</div>
+        </div>
+        <div class="stat-icon icon-emerald"><i class="fa-solid fa-bolt"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Completed Sprints</div>
+            <div class="stat-value" style="color:var(--info);">
+                {% set completed_count = sprints | selectattr('status', 'equalto', 'Completed') | list | length %}
+                {{ completed_count }} Done
+            </div>
+            <div class="stat-subtext">Finished iterations</div>
+        </div>
+        <div class="stat-icon icon-purple"><i class="fa-solid fa-flag-checkered"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Latest Velocity</div>
+            <div class="stat-value" style="color:var(--warning);">
+                {% if velocity_history and velocity_history|length > 0 %}
+                    {{ velocity_history[0].velocity }} pts
+                {% else %}
+                    0 pts
+                {% endif %}
+            </div>
+            <div class="stat-subtext">Completed story points</div>
+        </div>
+        <div class="stat-icon icon-amber"><i class="fa-solid fa-gauge-high"></i></div>
+    </div>
+</div>
+
+<!-- SPRINTS ROSTER -->
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <h3 style="font-size:1.1rem; font-weight:700;">
+            <i class="fa-solid fa-list-check" style="color:var(--primary);"></i>
+            Sprints &mdash; {{ project.name }}
+        </h3>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Sprint Name</th>
+                    <th>Sprint Goal</th>
+                    <th>Dates</th>
+                    <th>Status</th>
+                    <th>Stories</th>
+                    <th>Points (Done / Total)</th>
+                    <th>Progress</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sprint in sprints %}
+                <tr style="{% if sprint.status == 'Active' %}background: rgba(16, 185, 129, 0.05);{% endif %}">
+                    <td style="font-weight:700;">
+                        <a href="{{ url_for('sprint.sprint_detail', sprint_id=sprint.id) }}" style="color:var(--primary); font-size:0.95rem;">
+                            {{ sprint.name }}
+                        </a>
+                    </td>
+                    <td style="color:var(--text-secondary); font-size:0.85rem; max-width:240px;">
+                        {{ sprint.goal or 'No goal defined.' }}
+                    </td>
+                    <td style="font-size:0.8rem; color:var(--text-muted);">
+                        {{ sprint.start_date }} &rarr; {{ sprint.end_date }}
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if sprint.status == 'Active' %}badge-active
+                            {% elif sprint.status == 'Completed' %}badge-completed
+                            {% else %}badge-planned{% endif %}">
+                            {{ sprint.status }}
+                        </span>
+                    </td>
+                    <td style="text-align:center; font-weight:700;">
+                        {{ sprint.total_stories }} stories
+                    </td>
+                    <td style="text-align:center;">
+                        <span style="font-weight:700; color:var(--success);">{{ sprint.completed_points }}</span>
+                        / <span style="font-weight:700;">{{ sprint.total_points }} pts</span>
+                    </td>
+                    <td style="width:140px;">
+                        {% set pct = (sprint.completed_points / sprint.total_points * 100) if sprint.total_points > 0 else 0 %}
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
+                                <div style="width: {{ pct }}%; background:var(--success); height:100%;"></div>
+                            </div>
+                            <span style="font-size:0.75rem; font-weight:700;">{{ pct|round(1) }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('sprint.sprint_detail', sprint_id=sprint.id) }}" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-arrow-right"></i> Details
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:36px; color:var(--text-muted);">
+                        No sprints created yet.
+                        {% if session.role == 'Scrum Master' %}
+                        Click "Create New Sprint" above to plan an iteration.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CREATE SPRINT MODAL -->
+{% if session.role == 'Scrum Master' %}
+<div id="createSprintModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-person-running"></i> Create New Sprint</h3>
+            <button class="close-btn" onclick="closeModal('createSprintModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('sprint.sprints_view', project_id=project.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Sprint Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Sprint 1 - Core Authentication" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sprint Goal *</label>
+                    <textarea name="goal" class="form-control" rows="3" placeholder="Define the primary objective for this sprint..." required></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" name="start_date" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">End Date *</label>
+                        <input type="date" name="end_date" class="form-control" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create Sprint</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

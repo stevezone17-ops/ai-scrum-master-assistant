@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}Product Backlog - {{ project.name }}{% endblock %}
+{% block page_title %}Product Backlog{% endblock %}
+
+{% block header_actions %}
+{% if session.role in ['Scrum Master', 'Product Owner'] %}
+<button class="btn btn-primary" onclick="openModal('addStoryModal')">
+    <i class="fa-solid fa-plus"></i> Add User Story
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- BACKLOG STATISTICS -->
+<div class="grid-cols-4" style="margin-bottom:24px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Stories</div>
+            <div class="stat-value">{{ stats.total_stories }}</div>
+            <div class="stat-subtext">{{ stats.pending_stories }} Remaining</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-solid fa-bookmark"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Story Points</div>
+            <div class="stat-value">{{ stats.total_points }}</div>
+            <div class="stat-subtext">{{ stats.completed_points }} pts completed</div>
+        </div>
+        <div class="stat-icon icon-purple"><i class="fa-solid fa-star"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Completed Stories</div>
+            <div class="stat-value" style="color:var(--success);">{{ stats.completed_stories }}</div>
+            <div class="stat-subtext">of {{ stats.total_stories }} total</div>
+        </div>
+        <div class="stat-icon icon-emerald"><i class="fa-solid fa-circle-check"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Critical / High Priority</div>
+            <div class="stat-value" style="color:var(--danger);">{{ stats.high_priority_count }}</div>
+            <div class="stat-subtext">Need immediate attention</div>
+        </div>
+        <div class="stat-icon icon-rose"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+</div>
+
+<!-- SORT CONTROLS + TABLE -->
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <h3 style="font-size:1.1rem; font-weight:700;">
+            <i class="fa-solid fa-list-check" style="color:var(--primary);"></i>
+            User Stories &mdash; {{ project.name }}
+        </h3>
+
+        <!-- Sort Controls -->
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; color:var(--text-muted);">Sort by:</span>
+            {% for label, key in [('Priority','priority'),('Story Points','story_points'),('Status','status'),('Created','created_at')] %}
+            <a href="?sort={{ key }}"
+               class="btn btn-secondary btn-sm {% if sort_by == key %}active{% endif %}"
+               style="{% if sort_by == key %}background:var(--primary); color:#fff;{% endif %}">
+                {{ label }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">#</th>
+                    <th>User Story Title</th>
+                    <th>Priority</th>
+                    <th>Points</th>
+                    <th>Task Progress</th>
+                    <th>Status</th>
+                    <th>Assignee</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for story in stories %}
+                <tr>
+                    <td style="font-size:0.75rem; color:var(--text-muted);">#{{ story.id }}</td>
+                    <td>
+                        <div style="font-weight:700; font-size:0.9rem;">{{ story.title }}</div>
+                        {% if story.description %}
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+                            {{ story.description[:80] }}{% if story.description|length > 80 %}…{% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if story.priority == 'Critical' %}badge-urgent
+                            {% elif story.priority == 'High' %}badge-high
+                            {% elif story.priority == 'Medium' %}badge-medium
+                            {% else %}badge-low{% endif %}">
+                            {{ story.priority }}
+                        </span>
+                    </td>
+                    <td>
+                        <span style="background:rgba(99,102,241,0.15); color:#a5b4fc; font-weight:700;
+                                     padding:3px 10px; border-radius:12px; font-size:0.8rem;">
+                            {{ story.story_points }} pts
+                        </span>
+                    </td>
+                    <td style="font-size:0.8rem;">
+                        {% if story.task_count and story.task_count > 0 %}
+                            {% set task_pct = (story.completed_task_count / story.task_count * 100)|round(1) %}
+                            <div style="font-weight:700; color:var(--info);">{{ story.completed_task_count }}/{{ story.task_count }} Done ({{ task_pct }}%)</div>
+                            <div style="margin-top:4px; background:rgba(255,255,255,0.08); height:4px; border-radius:2px; overflow:hidden; width:90px;">
+                                <div style="width: {{ task_pct }}%; background:var(--info); height:100%;"></div>
+                            </div>
+                        {% else %}
+                            <span style="color:var(--text-muted);">0 Tasks</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.role == 'Developer' and story.assigned_to == session.user_id %}
+                        <form action="{{ url_for('backlog.edit_story', story_id=story.id) }}" method="POST" style="display:inline;">
+                            <select name="status" class="form-control" style="padding:4px 8px; font-size:0.8rem; width:auto;"
+                                    onchange="this.form.submit()">
+                                {% for s in valid_statuses %}
+                                <option value="{{ s }}" {% if story.status == s %}selected{% endif %}>{{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% else %}
+                        <span class="badge
+                            {% if story.status == 'Done' %}badge-active
+                            {% elif story.status == 'In Progress' %}badge-in-progress
+                            {% elif story.status == 'Ready' %}badge-planned
+                            {% else %}badge-status{% endif %}">
+                            {{ story.status }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if story.assignee_name %}
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <div class="user-avatar" style="width:24px; height:24px; font-size:0.65rem;">
+                                {{ story.assignee_name[0]|upper }}
+                            </div>
+                            <span style="font-size:0.82rem;">{{ story.assignee_name }}</span>
+                        </div>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:0.8rem;">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.78rem; color:var(--text-muted);">
+                        {{ story.created_at[:10] if story.created_at else '—' }}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            {% if session.role in ['Scrum Master', 'Product Owner'] %}
+                            <button class="btn btn-secondary btn-sm"
+                                    onclick="openEditModal({{ story.id }},
+                                        '{{ story.title|e }}',
+                                        '{{ (story.description or '')|e }}',
+                                        '{{ story.priority }}',
+                                        {{ story.story_points }},
+                                        '{{ story.status }}',
+                                        '{{ story.assigned_to or '' }}',
+                                        '{{ story.sprint_id or '' }}'
+                                    )">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form action="{{ url_for('backlog.delete_story', story_id=story.id) }}" method="POST"
+                                  onsubmit="return confirm('Delete story: {{ story.title }}?');">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger);">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:36px; color:var(--text-muted);">
+                        No user stories in the backlog yet.
+                        {% if session.role in ['Scrum Master', 'Product Owner'] %}
+                        Click "Add User Story" above to get started.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD USER STORY MODAL -->
+{% if session.role in ['Scrum Master', 'Product Owner'] %}
+<div id="addStoryModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-bookmark"></i> Add User Story</h3>
+            <button class="close-btn" onclick="closeModal('addStoryModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('backlog.backlog_view', project_id=project.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">User Story Title *</label>
+                    <input type="text" name="title" class="form-control"
+                           placeholder='As a [user], I want [feature], so that [benefit].' required>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                        Tip: Use Agile format — "As a [user], I want [feature], so that [benefit]."
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description / Acceptance Criteria</label>
+                    <textarea name="description" class="form-control" rows="3"
+                              placeholder="Define acceptance criteria or technical requirements..."></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Priority *</label>
+                        <select name="priority" class="form-control" required>
+                            {% for p in valid_priorities %}
+                            <option value="{{ p }}" {% if p == 'Medium' %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Story Points *</label>
+                        <select name="story_points" class="form-control" required>
+                            {% for pts in valid_points %}
+                            <option value="{{ pts }}" {% if pts == 3 %}selected{% endif %}>{{ pts }} Points</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-control">
+                            {% for s in valid_statuses %}
+                            <option value="{{ s }}" {% if s == 'Backlog' %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assign Developer</label>
+                        <select name="assigned_to" class="form-control">
+                            <option value="">— Unassigned —</option>
+                            {% for m in team_members %}
+                            <option value="{{ m.user_id }}">{{ m.username }} ({{ m.role_in_project }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Assign to Sprint (Optional)</label>
+                    <select name="sprint_id" class="form-control">
+                        <option value="">— Product Backlog (Unassigned) —</option>
+                        {% for s in sprints %}
+                        <option value="{{ s.id }}">{{ s.name }} ({{ s.status }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save User Story</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT USER STORY MODAL (filled via JS) -->
+<div id="editStoryModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-pen"></i> Edit User Story</h3>
+            <button class="close-btn" onclick="closeModal('editStoryModal')">&times;</button>
+        </div>
+        <form id="editStoryForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">User Story Title *</label>
+                    <input type="text" name="title" id="edit_title" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description / Acceptance Criteria</label>
+                    <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Priority *</label>
+                        <select name="priority" id="edit_priority" class="form-control">
+                            {% for p in valid_priorities %}
+                            <option value="{{ p }}">{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Story Points *</label>
+                        <select name="story_points" id="edit_story_points" class="form-control">
+                            {% for pts in valid_points %}
+                            <option value="{{ pts }}">{{ pts }} Points</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select name="status" id="edit_status" class="form-control">
+                            {% for s in valid_statuses %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assign Developer</label>
+                        <select name="assigned_to" id="edit_assigned_to" class="form-control">
+                            <option value="">— Unassigned —</option>
+                            {% for m in team_members %}
+                            <option value="{{ m.user_id }}">{{ m.username }} ({{ m.role_in_project }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sprint Assignment</label>
+                    <select name="sprint_id" id="edit_sprint_id" class="form-control">
+                        <option value="">— Product Backlog (Unassigned) —</option>
+                        {% for s in sprints %}
+                        <option value="{{ s.id }}">{{ s.name }} ({{ s.status }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Update Story</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditModal(storyId, title, description, priority, storyPoints, status, assignedTo, sprintId) {
+    document.getElementById('editStoryForm').action = '/stories/' + storyId + '/edit';
+    document.getElementById('edit_title').value = title || '';
+    document.getElementById('edit_description').value = description || '';
+
+    const setSelect = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) {
+            for (let opt of el.options) {
+                opt.selected = (String(opt.value) === String(val));
+            }
+        }
+    };
+
+    setSelect('edit_priority', priority);
+    setSelect('edit_story_points', String(storyPoints));
+    setSelect('edit_status', status);
+    setSelect('edit_assigned_to', String(assignedTo));
+    setSelect('edit_sprint_id', String(sprintId));
+
+    openModal('editStoryModal');
+}
+</script>
+{% endblock %}

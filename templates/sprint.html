@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Sprint Management - AI Scrum Master Assistant{% endblock %}
+{% block page_title %}Sprint Management{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openModal('createSprintModal')">
+    <i class="fa-solid fa-plus"></i> Create New Sprint
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid-cols-3">
+    <!-- Sprint List -->
+    <div class="card" style="grid-column: span 2;">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:16px;">
+            <i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Project Sprints
+        </h3>
+
+        <div style="display:flex; flex-direction:column; gap:16px;">
+            {% for s in sprints %}
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:18px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div>
+                        <h4 style="font-size:1rem; font-weight:700; color:var(--text-primary);">{{ s.name }}</h4>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">
+                            <i class="fa-regular fa-calendar"></i> {{ s.start_date }} to {{ s.end_date }}
+                        </div>
+                    </div>
+                    <span class="badge badge-{{ s.status|lower }}">{{ s.status }}</span>
+                </div>
+
+                <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:12px;">
+                    <strong>Goal:</strong> {{ s.goal or 'No specific sprint goal set.' }}
+                </p>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.82rem; color:var(--text-secondary); background:rgba(0,0,0,0.2); padding:10px; border-radius:var(--radius-sm);">
+                    <div><i class="fa-solid fa-list-check"></i> Tasks: <strong>{{ s.completed_tasks }} / {{ s.total_tasks }}</strong> Done</div>
+                    <div><i class="fa-solid fa-star"></i> Story Points: <strong>{{ s.total_points or 0 }} pts</strong></div>
+                    <a href="{{ url_for('task.kanban_board', project_id=project.id, sprint_id=s.id) }}" class="btn btn-secondary btn-sm">
+                        View Kanban
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted); text-align:center; padding:24px;">No sprints configured yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Active Sprint AI Health Summary -->
+    <div class="card">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:14px;">
+            <i class="fa-solid fa-robot" style="color:var(--primary);"></i> Active Sprint AI Risk
+        </h3>
+
+        {% if ai_data and ai_data.has_sprint %}
+        <div style="text-align:center; padding:16px 0;">
+            <div class="risk-badge risk-{{ ai_data.ai_analysis.risk_level }}" style="margin-bottom:12px;">
+                RISK LEVEL: {{ ai_data.ai_analysis.risk_level }}
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-muted);">
+                Scikit-Learn Model Confidence: {{ ai_data.ai_analysis.confidence }}
+            </div>
+        </div>
+
+        <hr style="border:none; border-top:1px solid var(--border-color); margin:12px 0;">
+
+        <div style="font-size:0.85rem;">
+            <strong>Top Action Item:</strong>
+            <p style="color:var(--text-secondary); margin-top:4px;">
+                {{ ai_data.ai_analysis.recommendations[0] if ai_data.ai_analysis.recommendations else 'Sprint pace is normal.' }}
+            </p>
+        </div>
+        {% else %}
+        <p style="font-size:0.85rem; color:var(--text-muted);">Select or activate a sprint to display AI health insights.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CREATE SPRINT MODAL -->
+<div id="createSprintModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-bolt"></i> Create Sprint</h3>
+            <button class="close-btn" onclick="closeModal('createSprintModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('sprint.sprints_view', project_id=project.id) }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Sprint Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Sprint 3: Core API Integration" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sprint Goal</label>
+                    <textarea name="goal" class="form-control" rows="2" placeholder="What is the key objective of this sprint?"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ today }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" name="end_date" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="Planned">Planned</option>
+                        <option value="Active" selected>Active</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create Sprint</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

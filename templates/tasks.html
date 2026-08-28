@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}Task Management - {{ project.name }}{% endblock %}
+{% block page_title %}Task Management{% endblock %}
+
+{% block header_actions %}
+{% if session.role in ['Scrum Master', 'Product Owner'] %}
+<button class="btn btn-primary" onclick="openModal('createTaskModal')">
+    <i class="fa-solid fa-plus"></i> Create New Task
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- TASK STATISTICS STRIP (Requirement 8) -->
+<div class="grid-cols-4" style="margin-bottom:20px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Tasks</div>
+            <div class="stat-value">{{ task_stats.total_tasks }}</div>
+            <div class="stat-subtext">{{ task_stats.completion_pct }}% Completion Rate</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-solid fa-list-check"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">To Do / In Progress</div>
+            <div class="stat-value" style="color:var(--warning);">
+                {{ task_stats.todo_count }} <span style="font-size:0.9rem; color:var(--text-muted);">/ {{ task_stats.in_progress_count }} active</span>
+            </div>
+            <div class="stat-subtext">Pending Development</div>
+        </div>
+        <div class="stat-icon icon-amber"><i class="fa-solid fa-spinner"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Completed (Done)</div>
+            <div class="stat-value" style="color:var(--success);">{{ task_stats.completed_count }}</div>
+            <div class="stat-subtext">{{ task_stats.testing_count }} tasks in Testing</div>
+        </div>
+        <div class="stat-icon icon-emerald"><i class="fa-solid fa-circle-check"></i></div>
+    </div>
+
+    <div class="card stat-card" style="{% if task_stats.overdue_count > 0 %}border: 1px solid var(--danger); background: rgba(239, 68, 68, 0.05);{% endif %}">
+        <div>
+            <div class="stat-title">Overdue Tasks</div>
+            <div class="stat-value" style="color: {% if task_stats.overdue_count > 0 %}var(--danger){% else %}var(--text-primary){% endif %};">
+                {{ task_stats.overdue_count }}
+            </div>
+            <div class="stat-subtext">Past due date</div>
+        </div>
+        <div class="stat-icon icon-rose"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+</div>
+
+<!-- SECONDARY HOURS & VARIANCE STRIP -->
+<div class="grid-cols-3" style="margin-bottom:24px;">
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Estimated Hours</div>
+            <div class="stat-value" style="color:var(--primary);">{{ task_stats.total_estimated_hours }} hrs</div>
+            <div class="stat-subtext">Planned workload</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fa-regular fa-clock"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Total Actual Hours</div>
+            <div class="stat-value" style="color:var(--info);">{{ task_stats.total_actual_hours }} hrs</div>
+            <div class="stat-subtext">Logged time</div>
+        </div>
+        <div class="stat-icon icon-purple"><i class="fa-solid fa-stopwatch"></i></div>
+    </div>
+
+    <div class="card stat-card">
+        <div>
+            <div class="stat-title">Hours Variance</div>
+            <div class="stat-value" style="color: {% if task_stats.hours_variance > 0 %}var(--danger){% elif task_stats.hours_variance < 0 %}var(--success){% else %}var(--text-primary){% endif %};">
+                {% if task_stats.hours_variance > 0 %}+{% endif %}{{ task_stats.hours_variance }} hrs
+            </div>
+            <div class="stat-subtext">
+                {% if task_stats.hours_variance > 0 %}
+                <span style="color:var(--danger);"><i class="fa-solid fa-arrow-up"></i> Over Estimate</span>
+                {% elif task_stats.hours_variance < 0 %}
+                <span style="color:var(--success);"><i class="fa-solid fa-arrow-down"></i> Under Estimate</span>
+                {% else %}
+                <span><i class="fa-solid fa-check"></i> On Estimate</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="stat-icon icon-amber"><i class="fa-solid fa-scale-balanced"></i></div>
+    </div>
+</div>
+
+<!-- FILTER & CONTROL BAR -->
+<div class="card" style="margin-bottom:20px; padding:14px 20px;">
+    <form action="{{ url_for('task.tasks_view', project_id=project.id) }}" method="GET" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span style="font-weight:700; font-size:0.9rem; color:var(--text-secondary);"><i class="fa-solid fa-filter"></i> Filters:</span>
+
+            <!-- Sprint Filter -->
+            <select name="sprint_id" class="form-control" style="width:auto; font-size:0.85rem;" onchange="this.form.submit()">
+                <option value="">All Sprints</option>
+                {% for s in sprints %}
+                <option value="{{ s.id }}" {% if selected_sprint_id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.status }})</option>
+                {% endfor %}
+            </select>
+
+            <!-- Assignee Filter -->
+            <select name="assigned_to" class="form-control" style="width:auto; font-size:0.85rem;" onchange="this.form.submit()">
+                <option value="">All Team Members</option>
+                {% for m in team_members %}
+                <option value="{{ m.id }}" {% if filter_assigned == m.id %}selected{% endif %}>{{ m.username }} ({{ m.role_in_project }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            {% if session.role == 'Developer' %}
+            <a href="{{ url_for('task.tasks_view', project_id=project.id, my_tasks=1) }}" class="btn btn-secondary btn-sm" style="{% if filter_assigned == session.user_id %}background:var(--primary); color:white;{% endif %}">
+                <i class="fa-solid fa-user"></i> My Assigned Tasks Only
+            </a>
+            {% endif %}
+            {% if filter_assigned or selected_sprint_id %}
+            <a href="{{ url_for('task.tasks_view', project_id=project.id) }}" class="btn btn-secondary btn-sm">Clear Filters</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- TASKS TABLE -->
+<div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.1rem; font-weight:700;">
+            <i class="fa-solid fa-tasks" style="color:var(--primary);"></i> Development Tasks List
+        </h3>
+        <span style="font-size:0.85rem; color:var(--text-muted);">Showing {{ tasks|length }} tasks</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Task Name & Description</th>
+                    <th>User Story</th>
+                    <th>Assignee</th>
+                    <th>Priority</th>
+                    <th>Est. / Actual Hrs</th>
+                    <th>Variance</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr style="{% if task.is_overdue %}background: rgba(239, 68, 68, 0.05);{% endif %}">
+                    <td style="font-size:0.75rem; color:var(--text-muted);">#{{ task.id }}</td>
+                    <td>
+                        <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">
+                            {{ task.title }}
+                        </div>
+                        {% if task.description %}
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+                            {{ task.description[:70] }}{% if task.description|length > 70 %}…{% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if task.story_title %}
+                        <span class="badge badge-planned" style="font-size:0.75rem; font-weight:600;" title="{{ task.story_title }}">
+                            <i class="fa-solid fa-bookmark"></i> {{ task.story_title[:28] }}{% if task.story_title|length > 28 %}…{% endif %}
+                        </span>
+                        {% else %}
+                        <span style="font-size:0.78rem; color:var(--text-muted);">None</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if task.assignee_name %}
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">{{ task.assignee_name[0]|upper }}</div>
+                            <span style="font-size:0.83rem; font-weight:600;">{{ task.assignee_name }}</span>
+                        </div>
+                        {% else %}
+                        <span class="badge badge-status">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if task.priority == 'Critical' %}badge-urgent
+                            {% elif task.priority == 'High' %}badge-high
+                            {% elif task.priority == 'Medium' %}badge-medium
+                            {% else %}badge-low{% endif %}">
+                            {{ task.priority }}
+                        </span>
+                    </td>
+                    <td style="font-size:0.85rem;">
+                        <span style="font-weight:700; color:var(--primary);">{{ task.estimated_hours }}h</span> est /
+                        <span style="font-weight:700; color:var(--info);">{{ task.actual_hours }}h</span> act
+                    </td>
+                    <td>
+                        {% set var = task.actual_hours - task.estimated_hours %}
+                        {% if var > 0 %}
+                        <span class="badge badge-urgent" style="font-size:0.72rem;">+{{ var|round(1) }}h (Over)</span>
+                        {% elif var < 0 %}
+                        <span class="badge badge-active" style="font-size:0.72rem;">{{ var|round(1) }}h (Under)</span>
+                        {% else %}
+                        <span class="badge badge-planned" style="font-size:0.72rem;">On Est</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.8rem;">
+                        {% if task.due_date %}
+                            {{ task.due_date }}
+                            {% if task.is_overdue %}
+                            <br><span class="badge badge-urgent" style="font-size:0.68rem; margin-top:2px;"><i class="fa-solid fa-exclamation-circle"></i> OVERDUE</span>
+                            {% endif %}
+                        {% else %}
+                            <span style="color:var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge
+                            {% if task.status == 'Done' %}badge-active
+                            {% elif task.status == 'In Progress' %}badge-in-progress
+                            {% elif task.status == 'Testing' %}badge-high
+                            {% else %}badge-status{% endif %}">
+                            {{ task.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <!-- Progress/Hours update for Developer / SM -->
+                            {% if session.role == 'Scrum Master' or (session.role == 'Developer' and task.assigned_to == session.user_id) %}
+                            <button class="btn btn-secondary btn-sm"
+                                    onclick="openProgressModal({{ task.id }}, '{{ task.title|e }}', {{ task.actual_hours }}, '{{ task.status }}')"
+                                    title="Update Actual Hours / Status">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </button>
+                            {% endif %}
+
+                            <!-- Full Edit for Scrum Master -->
+                            {% if session.role in ['Scrum Master', 'Product Owner'] %}
+                            <button class="btn btn-secondary btn-sm"
+                                    onclick="openEditTaskModal({{ task.id }}, '{{ task.title|e }}', '{{ (task.description or '')|e }}', {{ task.story_id or 'null' }}, {{ task.sprint_id or 'null' }}, {{ task.assigned_to or 'null' }}, '{{ task.priority }}', {{ task.estimated_hours }}, {{ task.actual_hours }}, '{{ task.due_date or '' }}', '{{ task.status }}')">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form action="{{ url_for('task.delete_task', task_id=task.id) }}" method="POST"
+                                  onsubmit="return confirm('Delete task #{{ task.id }}?');" style="display:inline;">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--danger);">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" style="text-align:center; padding:36px; color:var(--text-muted);">
+                        No development tasks found for this selection.
+                        {% if session.role in ['Scrum Master', 'Product Owner'] %}
+                        Click "Create New Task" above to add work items.
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- DEVELOPER WORKLOAD TABLE (Requirement 9) -->
+<div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:1.05rem; font-weight:700;">
+            <i class="fa-solid fa-user-gear" style="color:var(--info);"></i> Developer Workload & Capacity Breakdown
+        </h3>
+        <span style="font-size:0.82rem; color:var(--text-muted);">Capacity based on 40h standard allocation</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Developer Name</th>
+                    <th>Project Role</th>
+                    <th>Assigned Tasks</th>
+                    <th>Completed Tasks</th>
+                    <th>Assigned Est. Hours</th>
+                    <th>Actual Logged Hours</th>
+                    <th>Workload %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in workload %}
+                <tr>
+                    <td style="font-weight:700;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="user-avatar" style="width:28px; height:28px; font-size:0.75rem;">{{ member.username[0]|upper }}</div>
+                            <div>
+                                <div>{{ member.username }}</div>
+                                <div style="font-size:0.74rem; color:var(--text-muted);">{{ member.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-status">{{ member.role_in_project }}</span></td>
+                    <td style="font-weight:700;">{{ member.total_tasks }} tasks</td>
+                    <td style="color:var(--success); font-weight:700;">{{ member.completed_tasks }} Done</td>
+                    <td style="font-weight:700; color:var(--primary);">{{ member.assigned_hours }} hrs</td>
+                    <td style="font-weight:700; color:var(--info);">{{ member.actual_hours }} hrs</td>
+                    <td style="width:160px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
+                                <div style="width: {{ [member.workload_pct, 100]|min }}%; background: {% if member.workload_pct > 100 %}var(--danger){% elif member.workload_pct > 80 %}var(--warning){% else %}var(--success){% endif %}; height:100%;"></div>
+                            </div>
+                            <span style="font-size:0.75rem; font-weight:700;">{{ member.workload_pct }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">No team members assigned to project.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CREATE TASK MODAL -->
+{% if session.role in ['Scrum Master', 'Product Owner'] %}
+<div id="createTaskModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-plus-circle"></i> Create Development Task</h3>
+            <button class="close-btn" onclick="closeModal('createTaskModal')">&times;</button>
+        </div>
+        <form action="{{ url_for('task.create_task') }}" method="POST">
+            <input type="hidden" name="project_id" value="{{ project.id }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task Name *</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g. Create authentication API route" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2" placeholder="Task implementation details..."></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Related User Story *</label>
+                        <select name="story_id" class="form-control" required>
+                            <option value="">-- Select User Story --</option>
+                            {% for story in user_stories %}
+                            <option value="{{ story.id }}">#{{ story.id }} {{ story.title[:35] }}...</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assigned Developer *</label>
+                        <select name="assigned_to" class="form-control">
+                            <option value="">-- Unassigned --</option>
+                            {% for m in team_members %}
+                            <option value="{{ m.id }}">{{ m.username }} ({{ m.role_in_project }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select name="priority" class="form-control">
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Est. Hours * (>0)</label>
+                        <input type="number" step="0.5" min="0.5" name="estimated_hours" class="form-control" value="4.0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" name="due_date" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Initial Status</label>
+                    <select name="status" class="form-control">
+                        <option value="To Do" selected>To Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Done">Done</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- DEVELOPER QUICK PROGRESS / HOURS MODAL -->
+<div id="progressModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-clock-rotate-left"></i> Log Actual Hours & Progress</h3>
+            <button class="close-btn" onclick="closeModal('progressModal')">&times;</button>
+        </div>
+        <form id="progressForm" action="" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task Name</label>
+                    <input type="text" id="prog_task_title" class="form-control" readonly style="opacity:0.7;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Actual Logged Hours</label>
+                    <input type="number" step="0.5" min="0" id="prog_actual_hours" name="actual_hours" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Current Status</label>
+                    <select id="prog_status" name="status" class="form-control">
+                        <option value="To Do">To Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Done">Done</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Progress</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- SCRUM MASTER FULL EDIT TASK MODAL -->
+{% if session.role in ['Scrum Master', 'Product Owner'] %}
+<div id="editTaskModal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-pen"></i> Edit Task Details</h3>
+            <button class="close-btn" onclick="closeModal('editTaskModal')">&times;</button>
+        </div>
+        <form id="editTaskForm" action="" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Task Name *</label>
+                    <input type="text" id="edit_title" name="title" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="edit_description" name="description" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">User Story</label>
+                        <select id="edit_story_id" name="story_id" class="form-control">
+                            <option value="">-- None --</option>
+                            {% for story in user_stories %}
+                            <option value="{{ story.id }}">#{{ story.id }} {{ story.title[:35] }}...</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assigned Developer</label>
+                        <select id="edit_assigned_to" name="assigned_to" class="form-control">
+                            <option value="">-- Unassigned --</option>
+                            {% for m in team_members %}
+                            <option value="{{ m.id }}">{{ m.username }} ({{ m.role_in_project }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select id="edit_priority" name="priority" class="form-control">
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Est. Hours *</label>
+                        <input type="number" step="0.5" min="0.5" id="edit_estimated_hours" name="estimated_hours" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Actual Hours</label>
+                        <input type="number" step="0.5" min="0" id="edit_actual_hours" name="actual_hours" class="form-control" required>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" id="edit_due_date" name="due_date" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select id="edit_status" name="status" class="form-control">
+                            <option value="To Do">To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Testing">Testing</option>
+                            <option value="Done">Done</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openProgressModal(taskId, title, actualHours, status) {
+    document.getElementById('progressForm').action = '/tasks/' + taskId + '/update_progress';
+    document.getElementById('prog_task_title').value = title;
+    document.getElementById('prog_actual_hours').value = actualHours;
+
+    const statusSel = document.getElementById('prog_status');
+    if (statusSel) {
+        for (let opt of statusSel.options) {
+            opt.selected = (opt.value === status);
+        }
+    }
+
+    openModal('progressModal');
+}
+
+function openEditTaskModal(taskId, title, description, storyId, sprintId, assignedTo, priority, estHours, actHours, dueDate, status) {
+    document.getElementById('editTaskForm').action = '/tasks/' + taskId + '/edit';
+    document.getElementById('edit_title').value = title || '';
+    document.getElementById('edit_description').value = description || '';
+
+    const setSelect = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) {
+            for (let opt of el.options) {
+                opt.selected = (String(opt.value) === String(val));
+            }
+        }
+    };
+
+    setSelect('edit_story_id', storyId || '');
+    setSelect('edit_assigned_to', assignedTo || '');
+    setSelect('edit_priority', priority);
+    document.getElementById('edit_estimated_hours').value = estHours;
+    document.getElementById('edit_actual_hours').value = actHours;
+    document.getElementById('edit_due_date').value = dueDate || '';
+    setSelect('edit_status', status);
+
+    openModal('editTaskModal');
+}
+</script>
+{% endblock %}

@@ -64,7 +64,9 @@ def internal_server_error(e):
     return render_template('error.html', error_code=500, error_title="Server Issue", error_message="An unexpected server condition occurred. Please try again or return to the dashboard."), 500
 
 if __name__ == '__main__':
-    print("[+] Initializing AI Scrum Master Assistant Database...")
+    port = int(os.environ.get('PORT', 5000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    print(f"[+] Initializing AI Scrum Master Assistant Database...")
     init_db()
-    print("[+] System Ready! Launching Web Server on http://127.0.0.1:5000")
-    app.run(debug=False, host='127.0.0.1', port=5000, threaded=True)
+    print(f"[+] System Ready! Launching Web Server on http://{host}:{port}")
+    app.run(debug=False, host=host, port=port, threaded=True)

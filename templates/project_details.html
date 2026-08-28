@@ -118,7 +118,9 @@
                 <tbody>
                     {% for s in sprints %}
                     <tr>
-                        <td style="font-weight:600;">{{ s.name }}</td>
+                        <td style="font-weight:600;">
+                            <a href="{{ url_for('sprint.sprint_detail', sprint_id=s.id) }}" style="color:var(--primary); font-weight:700;">{{ s.name }}</a>
+                        </td>
                         <td><span class="badge badge-{{ s.status|lower }}">{{ s.status }}</span></td>
                         <td style="font-size:0.8rem; color:var(--text-secondary);">{{ s.start_date }} to {{ s.end_date }}</td>
                         <td style="font-size:0.85rem;">{{ s.completed_tasks }} / {{ s.total_tasks }} Done</td>

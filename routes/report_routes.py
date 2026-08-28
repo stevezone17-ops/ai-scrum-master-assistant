@@ -183,6 +183,8 @@ def reports_view(project_id):
         flash("Access Denied: You do not have permission to view reports for this project.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
+
     report_type = request.args.get('report_type', 'sprint')
     sprints = Sprint.get_by_project(project_id)
 

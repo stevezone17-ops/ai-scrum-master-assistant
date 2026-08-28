@@ -41,6 +41,27 @@ def supabase_health_check():
 @app.context_processor
 def inject_global_vars():
     """Inject useful context variables into all Jinja templates."""
+    user_id = session.get('user_id')
+    role = session.get('role')
+
+    current_project = None
+    user_projects = []
+
+    if user_id:
+        try:
+            from models.project import Project
+            user_projects = Project.get_user_projects(user_id, role)
+
+            project_id = session.get('project_id')
+            if project_id:
+                current_project = Project.get_by_id(project_id)
+
+            if not current_project and user_projects:
+                current_project = user_projects[0]
+                session['project_id'] = current_project['id']
+        except Exception:
+            pass
+
     return {
         'today': date.today().isoformat(),
         'current_user': {
@@ -48,7 +69,9 @@ def inject_global_vars():
             'username': session.get('username'),
             'role': session.get('role'),
             'email': session.get('email')
-        }
+        },
+        'projects': user_projects,
+        'current_project': current_project
     }
 
 @app.errorhandler(404)

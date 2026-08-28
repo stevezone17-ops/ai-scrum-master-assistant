@@ -36,6 +36,8 @@ def assistant_view(project_id):
         flash("Access Denied: You are not authorized to view this project.", "danger")
         return redirect(url_for('project.dashboard'))
 
+    session['project_id'] = project_id
+
     # Load session-based conversation history
     chat_history_key = f"chat_history_{project_id}"
     history = session.get(chat_history_key, [])

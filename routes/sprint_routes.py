@@ -22,6 +22,8 @@ def sprints_view(project_id):
         flash("Project not found.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
+
     if request.method == 'POST':
         deny = _require_scrum_master(url_for('sprint.sprints_view', project_id=project_id))
         if deny:
@@ -62,6 +64,7 @@ def sprint_detail(sprint_id):
         flash("Sprint not found.", "danger")
         return redirect(url_for('project.dashboard'))
 
+    session['project_id'] = sprint['project_id']
     project = Project.get_by_id(sprint['project_id'])
     stats = Sprint.get_sprint_stats(sprint_id)
     task_stats = Task.get_task_stats(sprint['project_id'], sprint_id=sprint_id)

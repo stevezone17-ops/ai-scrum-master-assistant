@@ -21,12 +21,16 @@ def dashboard():
     db_counts = Project.get_dashboard_counts()
 
     selected_project_id = request.args.get('project_id', type=int)
+    if not selected_project_id:
+        selected_project_id = session.get('project_id')
     if not selected_project_id and projects:
         selected_project_id = projects[0]['id']
 
     current_project = None
     if selected_project_id:
         current_project = Project.get_by_id(selected_project_id)
+        if current_project:
+            session['project_id'] = current_project['id']
 
     # Initial defaults
     active_sprint = None
@@ -75,8 +79,8 @@ def dashboard():
     overdue_count = len(overdue_tasks_list)
     overdue_tasks_list.sort(key=lambda x: str(x['due_date']))
 
-    total_estimated_hours = round(sum(t.get('estimated_hours') or 0 for t in tasks), 1)
-    total_actual_hours = round(sum(t.get('actual_hours') or 0 for t in tasks), 1)
+    total_estimated_hours = round(sum(float(t.get('estimated_hours') or 0) for t in tasks), 1)
+    total_actual_hours = round(sum(float(t.get('actual_hours') or 0) for t in tasks), 1)
 
     sprint_completion_pct = active_sprint_stats['progress_pct'] if (active_sprint_stats and active_sprint_stats['total_points'] > 0) else (round((completed_tasks / total_tasks * 100), 1) if total_tasks > 0 else 0.0)
 
@@ -221,6 +225,8 @@ def project_detail(project_id):
         flash("Project not found or invalid ID.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
+
     stats = Project.get_project_stats(project_id)
     members = Project.get_members(project_id)
     sprints = Sprint.get_by_project(project_id)
@@ -283,6 +289,8 @@ def team_management(project_id):
     if not project:
         flash("Project not found.", "danger")
         return redirect(url_for('project.projects_list'))
+
+    session['project_id'] = project_id
 
     if request.method == 'POST':
         if session.get('role') != 'Scrum Master':

@@ -161,8 +161,8 @@
                 <tr style="{% if task.is_overdue %}background: rgba(239, 68, 68, 0.05);{% endif %}">
                     <td style="font-size:0.75rem; color:var(--text-muted);">#{{ task.id }}</td>
                     <td>
-                        <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">
-                            {{ task.title }}
+                        <div style="font-weight:700; font-size:0.9rem;">
+                            <a href="{{ url_for('task.task_detail', task_id=task.id) }}" style="color:var(--primary); font-weight:700;">{{ task.title }}</a>
                         </div>
                         {% if task.description %}
                         <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">

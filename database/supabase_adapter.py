@@ -203,7 +203,20 @@ class SupabaseCursorAdapter:
 
             if len(rows) > 0:
                 cols = list(rows[0].keys())
-                col_defs = ", ".join([f'"{c}" TEXT' for c in cols])
+                col_type_map = {}
+                for r in rows:
+                    for c, val in r.items():
+                        if c not in col_type_map and val is not None:
+                            if isinstance(val, bool):
+                                col_type_map[c] = 'INTEGER'
+                            elif isinstance(val, int):
+                                col_type_map[c] = 'INTEGER'
+                            elif isinstance(val, float):
+                                col_type_map[c] = 'REAL'
+                            else:
+                                col_type_map[c] = 'TEXT'
+
+                col_defs = ", ".join([f'"{c}" {col_type_map.get(c, "TEXT")}' for c in cols])
                 mem_cursor.execute(f'CREATE TABLE "{table}" ({col_defs})')
 
                 placeholders = ", ".join(["?"] * len(cols))
@@ -243,14 +256,21 @@ class SupabaseCursorAdapter:
         self._index = len(self._results)
         return results
 
+    def close(self):
+        pass
+
 
 class SupabaseDatabaseAdapter:
-    """Connection-like adapter exposing cursor(), commit(), and close()."""
+    """Connection-like adapter exposing cursor(), execute(), commit(), and close()."""
     def __init__(self, supabase_client):
         self.client = supabase_client
 
     def cursor(self):
         return SupabaseCursorAdapter(self.client)
+
+    def execute(self, sql, params=()):
+        cursor = self.cursor()
+        return cursor.execute(sql, params)
 
     def commit(self):
         pass

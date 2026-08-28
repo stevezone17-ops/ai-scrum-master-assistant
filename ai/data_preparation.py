@@ -352,11 +352,11 @@ def extract_sprint_dataset() -> pd.DataFrame:
     # Date features
     df = _calculate_date_features(df)
 
+    # Clean / fill numeric types
+    df = _clean_dataframe(df)
+
     # Derived numeric features
     df = _calculate_derived_features(df)
-
-    # Clean / fill
-    df = _clean_dataframe(df)
 
     # Assign risk label
     df[TARGET_COLUMN] = df.apply(classify_risk_label, axis=1)

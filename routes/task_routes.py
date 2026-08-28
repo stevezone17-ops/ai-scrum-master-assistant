@@ -17,6 +17,7 @@ def tasks_view(project_id):
         flash("Project not found.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
     user_id = session.get('user_id')
     role = session.get('role')
 
@@ -59,6 +60,7 @@ def kanban_board(project_id):
         flash("Project not found.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
     sprint_id = request.args.get('sprint_id', type=int)
     sprints = Sprint.get_by_project(project_id)
 
@@ -102,6 +104,7 @@ def task_detail(task_id):
         flash("Task not found.", "danger")
         return redirect(url_for('project.dashboard'))
 
+    session['project_id'] = task['project_id']
     project = Project.get_by_id(task['project_id'])
     user_story = UserStory.get_by_id(task['story_id']) if task['story_id'] else None
     return render_template('task_detail.html', task=task, project=project, user_story=user_story)

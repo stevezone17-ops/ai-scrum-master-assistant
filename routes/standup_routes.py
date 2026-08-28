@@ -28,6 +28,8 @@ def standup_view(project_id):
         flash("Project not found.", "danger")
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
+
     active_sprint = Sprint.get_active_sprint(project_id)
     today_date = date.today().isoformat()
 

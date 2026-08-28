@@ -30,6 +30,8 @@ def backlog_view(project_id):
     if not project:
         return redirect(url_for('project.projects_list'))
 
+    session['project_id'] = project_id
+
     role = session.get('role')
 
     if request.method == 'POST':

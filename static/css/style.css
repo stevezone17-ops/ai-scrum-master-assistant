@@ -244,28 +244,35 @@ a:hover {
 }
 
 .topbar {
-    height: var(--topbar-height);
+    min-height: var(--topbar-height);
+    height: auto;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
+    padding: 10px 24px;
     position: sticky;
     top: 0;
     z-index: 90;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .page-title-box {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .page-title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--text-primary);
+    white-space: nowrap;
+    margin: 0;
 }
 
 .project-selector {
@@ -278,12 +285,17 @@ a:hover {
     font-weight: 500;
     outline: none;
     cursor: pointer;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .topbar-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .ai-status-pill {

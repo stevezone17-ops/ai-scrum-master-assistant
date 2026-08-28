@@ -1,63 +1,87 @@
-# AI-Based Scrum Master Assistant for Agile Software Project Management
+# 🤖 AI-Based Scrum Master Assistant for Agile Software Project Management
 
-> A comprehensive, web-based Agile software project management application featuring Machine Learning Sprint Risk Evaluation (Scikit-Learn), Rule-Based Recommendations, NLP Daily Stand-up Analysis, an interactive AI Scrum Master Assistant, and ReportLab Server-Side PDF Export.
+[![Deployment Status](https://img.shields.io/badge/Render-Deployed-brightgreen.svg)](https://ai-scrum-master-assistant.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-lightgrey.svg)](https://flask.palletsprojects.org/)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL%20%7C%20SQLite-blueviolet.svg)](https://supabase.com)
+[![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20RandomForest-orange.svg)](https://scikit-learn.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> An enterprise-grade, full-stack Agile project management platform featuring **Machine Learning Sprint Delay Risk Evaluation (Scikit-Learn)**, **Rule-Based Recommendations**, **NLP Daily Stand-up Blocker Analysis**, an **Offline AI Scrum Master Assistant**, and **Server-Side PDF Exporting**. Supports dual database backends (**Supabase PostgreSQL** for production cloud hosting & **SQLite** for local zero-config offline execution).
+
+---
+
+## 🌐 Live Production Deployment
+
+- **Live Web Application**: [https://ai-scrum-master-assistant.onrender.com](https://ai-scrum-master-assistant.onrender.com)
+- **Primary Database Backend**: Supabase PostgreSQL Cloud
+- **Production Server Engine**: Gunicorn WSGI Server
 
 ---
 
 ## 📋 Table of Contents
-1. [Project Overview](#-project-overview)
-2. [Problem Statement & Objectives](#-problem-statement--objectives)
-3. [Agile & Scrum Concepts Used](#-agile--scrum-concepts-used)
-4. [System Architecture](#-system-architecture)
+
+1. [Executive Summary & Core Objectives](#-executive-summary--core-objectives)
+2. [Key Product Features](#-key-product-features)
+3. [Agile & Scrum Methodologies Implemented](#-agile--scrum-methodologies-implemented)
+4. [System Architecture & Flow](#-system-architecture--flow)
 5. [Technology Stack](#-technology-stack)
-6. [Database Design & Schema](#-database-design--schema)
-7. [AI & Machine Learning Layer](#-ai--machine-learning-layer)
-   - [ML Sprint Risk Prediction](#1-ml-sprint-risk-prediction)
-   - [AI Recommendations Engine](#2-ai-recommendations-engine)
-   - [NLP Daily Stand-up Analysis](#3-nlp-daily-stand-up-analysis)
-   - [AI Scrum Master Assistant](#4-ai-scrum-master-assistant)
-8. [Reporting & PDF Export](#-reporting--pdf-export)
-9. [User Roles & Permission Matrix](#-user-roles--permission-matrix)
-10. [Security & Data Isolation](#-security--data-isolation)
-11. [Directory Structure](#-directory-structure)
-12. [Installation & Setup Instructions](#-installation--setup-instructions)
-13. [Default Demo Credentials](#-default-demo-credentials)
-14. [Testing & Verification Results](#-testing--verification-results)
-15. [Limitations & Future Enhancements](#-limitations--future-enhancements)
+6. [Database Design & Dual-Backend Architecture](#-database-design--dual-backend-architecture)
+7. [AI & Machine Learning Engine](#-ai--machine-learning-engine)
+   - [1. ML Sprint Delay Risk Model](#1-ml-sprint-delay-risk-model)
+   - [2. AI Scrum Master Recommendations Engine](#2-ai-scrum-master-recommendations-engine)
+   - [3. NLP Daily Stand-Up Impediment Analyzer](#3-nlp-daily-stand-up-impediment-analyzer)
+   - [4. Intent-Based AI Assistant Chat](#4-intent-based-ai-assistant-chat)
+8. [Reporting & Server-Side PDF Export](#-reporting--server-side-pdf-export)
+9. [Role-Based Access Control (RBAC) Matrix](#-role-based-access-control-rbac-matrix)
+10. [Repository Directory Layout](#-repository-directory-layout)
+11. [Local Development & Installation Guide](#-local-development--installation-guide)
+12. [Environment Configuration (.env)](#-environment-configuration-env)
+13. [Render Production Deployment Guide](#-render-production-deployment-guide)
+14. [Default Demo Credentials](#-default-demo-credentials)
+15. [Automated Testing & Verification](#-automated-testing--verification)
+16. [License & Acknowledgments](#-license--acknowledgments)
 
 ---
 
-## 📌 Project Overview
+## 🎯 Executive Summary & Core Objectives
 
-The **AI-Based Scrum Master Assistant** is an intelligent, full-stack web application designed to help software development teams adopt Agile methodologies effectively. By integrating traditional Scrum artifacts (Product Backlog, Sprints, Tasks, Kanban Board, Daily Stand-ups) with an automated AI analytical layer, the platform identifies sprint delay risks, detects development blockers, recommends actionable resolution steps, and answers natural-language project queries.
+### The Problem
+Modern software development teams using traditional project management tools (like Jira or Trello) often experience silent sprint failures. Issues like unmonitored scope creep, undetected technical blockers, unbalanced developer workloads, and over-estimated tasks are typically discovered too late during sprint retrospectives.
 
----
-
-## 🎯 Problem Statement & Objectives
-
-### Problem Statement
-Agile software development teams frequently face sprint scope creep, unaddressed technical impediments, unrealistic developer workload distribution, and sudden sprint deadline failures. Traditional project management software simply records tasks without providing proactive insights or early warnings to the Scrum Master.
-
-### Project Objectives
-- **Automate Sprint Risk Prediction**: Leverage Machine Learning (`RandomForestClassifier`) to predict sprint failure risk (`LOW`, `MEDIUM`, `HIGH`) based on live sprint progress metrics.
-- **Provide Actionable Recommendations**: Implement a rule-based engine that converts metric variances into prioritized Scrum Master recommendations.
-- **Automate Daily Stand-up Analysis**: Process daily Scrum updates using NLP text matching to highlight impediments and detect repeated blockers across consecutive days.
-- **Interactive AI Assistant**: Allow project members to ask natural language questions about sprint status, team workload, blockers, and overdue tasks.
-- **Server-Side PDF Reporting**: Generate downloadable, professional PDF project and sprint status reports directly from real-time database records.
+### The Solution
+The **AI-Based Scrum Master Assistant** connects standard Agile workflow management (Product Backlogs, Sprint Cycles, Kanban Boards, Stand-up Updates) directly with an intelligent analytical engine. It continuously evaluates sprint progress metrics, predicts sprint delivery risks, highlights impediments reported across consecutive stand-up updates, and offers actionable recommendations to keep projects on track.
 
 ---
 
-## 🔄 Agile & Scrum Concepts Used
+## ✨ Key Product Features
 
-- **Product Backlog & User Stories**: Structured requirements framed as user stories with Fibonacci Story Point estimation (1, 2, 3, 5, 8, 13) and priority levels (`Low`, `Medium`, `High`, `Urgent`).
-- **Sprint Management**: Time-boxed development cycles with defined sprint goals, target start/end dates, status tracking (`Planned`, `Active`, `Completed`), and velocity calculation.
-- **Task Breakdown & Kanban Board**: Task division under user stories with 4-column drag-and-drop workflow (`To Do`, `In Progress`, `Testing`, `Done`).
-- **Daily Stand-up Meetings**: Developer updates recording work completed yesterday, planned work for today, and technical blockers.
-- **Sprint Velocity & Burndown Tracking**: Historical tracking of story points completed per sprint to establish team velocity baselines.
+- **📊 Dynamic Executive Dashboard**: Real-time project overview featuring active sprint progress, task completion metrics, team workload distributions, project health indicators, and AI insight cards.
+- **📁 Multi-Project Workspace**: Create and manage multiple software projects with team role assignments (`Scrum Master`, `Product Owner`, `Developer`).
+- **🔖 Product Backlog Management**: Prioritized backlog framing user stories with Fibonacci Story Point estimations (`1`, `2`, `3`, `5`, `8`, `13`) and priority indicators (`Low`, `Medium`, `High`, `Critical`).
+- **⚡ Sprint Iteration Management**: Time-boxed sprint planning with start/end dates, sprint goals, velocity tracking, and automatic rollover of incomplete user stories.
+- **📋 Interactive Drag & Drop Kanban Board**: Visual 4-column workflow (`To Do`, `In Progress`, `Testing`, `Done`) with real-time AJAX state updates.
+- **💬 Daily Stand-up Feed**: Log daily Scrum updates (work completed yesterday, planned work today, technical blockers) with automatic blocker severity flags.
+- **🤖 Offline AI Scrum Master Assistant**: Conversational chat interface answering questions regarding sprint risk, overdue tasks, team workload, and reported blockers.
+- **📄 Professional PDF Reports**: Generate server-side PDF status reports for projects and sprints using ReportLab.
+- **🔄 Dual Database Support**: Zero-config local execution with SQLite, alongside live production cloud database support via Supabase PostgreSQL.
 
 ---
 
-## 🏗️ System Architecture
+## 🔄 Agile & Scrum Methodologies Implemented
+
+| Agile Artifact / Event | Implementation Details |
+| :--- | :--- |
+| **Product Backlog** | Central requirement repository structured as user stories with Fibonacci estimations and status states (`Backlog`, `Ready`, `In Sprint`, `Completed`). |
+| **Sprint Planning** | Time-boxed iterations (`Planned`, `Active`, `Completed`) with defined sprint goals and points tracking. |
+| **Task Breakdown** | Fine-grained technical tasks assigned to developers under specific user stories with estimated vs. actual logged hours. |
+| **Kanban Board** | Visual task progress columns enabling developers to move work items cleanly across stages. |
+| **Daily Stand-up** | Structured 3-question daily Scrum updates capturing work finished, planned work, and active technical impediments. |
+| **Sprint Velocity** | Historical tracking of completed story points across iterations to establish team velocity baselines. |
+
+---
+
+## 🏗️ System Architecture & Flow
 
 ```
                                   +-------------------+
@@ -70,21 +94,21 @@ Agile software development teams frequently face sprint scope creep, unaddressed
                                   |  (routes/ & app)  |
                                   +----+----+----+----+
                                        |    |    |
-           +---------------------------+    |    +--------------------------+
-           |                                |                               |
-           v                                v                               v
-+-------------------+             +-------------------+           +-------------------+
-|  SQLite3 Database |             |    AI/ML Layer    |           | ReportLab PDF Engine|
-| (database/db.py)  |             |      (ai/)        |           |(utils/pdf_generator)|
-+-------------------+             +---------+---------+           +-------------------+
-                                            |
-                       +--------------------+--------------------+
-                       |                    |                    |
-                       v                    v                    v
-              +-----------------+  +------------------+  +------------------+
-              | ML Risk Model   |  | Recommendations  |  | Stand-up NLP     |
-              | (RandomForest)  |  | Engine           |  | Analyzer         |
-              +-----------------+  +------------------+  +------------------+
+            +--------------------------+    |    +--------------------------+
+            |                               |                               |
+            v                               v                               v
++-----------------------+         +-------------------+           +-------------------+
+|  Database Switcher    |         |    AI/ML Layer    |           | ReportLab PDF Engine|
+| (database/db.py)      |         |      (ai/)        |           |(utils/pdf_generator)|
++-----------+-----------+         +---------+---------+           +-------------------+
+            |                               |
+     +------+------+                        +--------------------+--------------------+
+     |             |                        |                    |                    |
+     v             v                        v                    v                    v
++---------+  +-----------+         +-----------------+  +------------------+  +------------------+
+| SQLite3 |  | Supabase  |         | ML Risk Model   |  | Recommendations  |  | Stand-up NLP     |
+| Local   |  | PostgreSQL|         | (RandomForest)  |  | Engine           |  | Analyzer         |
++---------+  +-----------+         +-----------------+  +------------------+  +------------------+
                                             |
                                             v
                                    +------------------+
@@ -97,261 +121,260 @@ Agile software development teams frequently face sprint scope creep, unaddressed
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: HTML5, Vanilla CSS3 (Custom Dark Theme Design System), JavaScript (ES6+ AJAX), Chart.js, FontAwesome 6
-- **Backend Framework**: Python 3.12, Flask 3.x, Werkzeug (Password Hashing & Routing)
-- **Database**: SQLite3
-- **Data Processing**: Pandas 2.x, NumPy 1.24+
+- **Frontend**: HTML5, Vanilla CSS3 (Custom Dark Theme Design System), JavaScript (ES6+ AJAX), FontAwesome 6, Chart.js
+- **Backend Framework**: Python 3.12, Flask 3.x, Werkzeug, Gunicorn (Production WSGI)
+- **Database Engine**: Supabase PostgreSQL (Cloud) / SQLite3 (Local)
+- **Data Engineering**: Pandas 2.x, NumPy 1.24+
 - **Machine Learning**: Scikit-Learn 1.3+ (`RandomForestClassifier`, `StandardScaler`), Joblib
-- **Document Export**: ReportLab 4.x (Server-Side PDF Generator)
-- **Testing Framework**: Python `unittest`
+- **Document Generator**: ReportLab 4.x (Server-Side PDF)
+- **Testing Suites**: Python `unittest` & `pytest`
 
 ---
 
-## 🗄️ Database Design & Schema
+## 🗄️ Database Design & Dual-Backend Architecture
 
-The database consists of 8 interconnected tables with enforced SQLite foreign keys:
+The platform supports 8 relational tables with foreign-key constraints across both database backends:
 
-1. **`users`**: User accounts storing `username`, `email`, `password_hash`, `role` (`Scrum Master`, `Product Owner`, `Developer`), and `created_at`.
-2. **`projects`**: Project details storing `name`, `description`, `start_date`, `end_date`, `status` (`Active`, `Planning`, `Completed`, `On Hold`), and `created_by`.
-3. **`team_members`**: Junction table assigning users to projects with `project_id`, `user_id`, `role_in_project`, and `joined_at`.
-4. **`user_stories`**: Backlog user stories storing `project_id`, `sprint_id`, `title`, `description`, `priority`, `story_points`, `status`, and `assigned_to`.
-5. **`sprints`**: Sprint iterations storing `project_id`, `name`, `goal`, `start_date`, `end_date`, `status`, and `velocity`.
-6. **`tasks`**: Technical tasks storing `project_id`, `sprint_id`, `story_id`, `title`, `description`, `assigned_to`, `priority`, `estimated_hours`, `actual_hours`, `due_date`, and `status`.
-7. **`standup_updates`**: Daily Scrum submissions storing `project_id`, `sprint_id`, `user_id`, `update_date`, `yesterday_text`, `today_text`, `blocker_text`, `status_category`, `is_blocked`, and `comments`.
-8. **`bugs`**: Defect tracking storing `project_id`, `sprint_id`, `task_id`, `title`, `severity`, `status`, and `reported_by`.
+```
+                          +---------------+
+                          |     users     |
+                          +-------+-------+
+                                  |
+            +---------------------+---------------------+
+            |                     |                     |
+            v                     v                     v
+    +---------------+     +---------------+     +---------------+
+    |   projects    | <-> |  team_members |     |standup_updates|
+    +-------+-------+     +---------------+     +---------------+
+            |
+            +---------------------+
+            |                     |
+            v                     v
+    +---------------+     +---------------+
+    |    sprints    |     | user_stories  |
+    +-------+-------+     +-------+-------+
+            |                     |
+            +----------+----------+
+                       |
+                       v
+                +---------------+     +---------------+
+                |     tasks     | <-> |     bugs      |
+                +---------------+     +---------------+
+```
 
----
-
-## 🤖 AI & Machine Learning Layer
-
-### 1. ML Sprint Risk Prediction (`ai/risk_model.py`, `ai/risk_service.py`)
-- **Model**: `RandomForestClassifier` trained on historical and synthetic sprint metrics.
-- **Preprocessing**: `StandardScaler` feature normalization.
-- **Features Extracted**:
-  - `task_completion_rate`: % of sprint tasks in `Done` status.
-  - `time_elapsed_ratio`: Ratio of days elapsed vs. total sprint duration.
-  - `overdue_task_ratio`: Ratio of overdue tasks vs. total tasks.
-  - `workload_share`: Maximum developer workload ratio.
-  - `bug_density_ratio`: Ratio of active bugs to user stories.
-  - `velocity_ratio`: Current sprint points vs. average historical velocity.
-- **Outputs**: Sprint delay risk level (`LOW`, `MEDIUM`, `HIGH`), model confidence score (e.g., `83.0%`), class probabilities, and top risk factors.
-
-### 2. AI Recommendations Engine (`ai/recommendations.py`)
-Rule-based recommendation engine evaluating live project metrics to issue prioritized action items:
-- **`HIGH` Priority**: Overdue tasks detected, sprint deadline approaching with incomplete work, high ML risk assessment.
-- **`MEDIUM` Priority**: Low overall task completion rate, unassigned developer workload imbalances.
-- **`LOW` Priority**: Normal progress monitoring recommendations.
-
-### 3. NLP Daily Stand-up Analysis (`ai/standup_analysis.py`)
-Text-processing engine that analyzes developers' daily Scrum text submissions:
-- **Blocker Detection**: Categorizes submissions as `BLOCKED`, `POTENTIAL_ISSUE`, or `ON_SCHEDULE` using keyword and pattern matching.
-- **Repeated Blocker Alerting**: Tracks consecutive days a developer reports the same impediment (e.g., *API credentials missing for 3+ updates*).
-- **Team Aggregation**: Computes reporting completion rates and compiles high-priority blockers for the Scrum Master feed.
-
-### 4. AI Scrum Master Assistant (`ai/assistant.py`)
-Natural-language assistant pipeline that operates entirely offline without external LLM API costs:
-- **Intent Detection**: Intent classifier supporting 8 intents (`SPRINT_STATUS`, `RISK`, `OVERDUE_TASKS`, `TEAM_WORKLOAD`, `BLOCKERS`, `RECOMMENDATIONS`, `BACKLOG_STATUS`, `TASK_STATUS`).
-- **Database Context Retrieval**: Queries real-time database models for the requested project.
-- **Chat History**: Manages session chat history limited to the last 20 messages.
+### Database Abstraction Switcher (`database/db.py`)
+- **`DATABASE_BACKEND=sqlite`**: Uses local SQLite file database (`database/database.db`).
+- **`DATABASE_BACKEND=supabase`**: Uses Supabase PostgreSQL cloud database via PostgREST API with a dynamic Python type adapter (`database/supabase_adapter.py`).
 
 ---
 
-## 📄 Reporting & PDF Export
+## 🤖 AI & Machine Learning Engine
 
-- **Sprint Report View**: Live UI summary displaying sprint goals, story points completed, velocity, task distribution, AI risk assessment, recommendations, and stand-up blockers.
-- **Project Overview Report**: Comprehensive project health indicator (`Healthy`, `Needs Attention`, `At Risk`), total backlog progress, and sprint completion metrics.
-- **Server-Side PDF Export (`utils/pdf_generator.py`)**: Uses ReportLab `SimpleDocTemplate` to format document streams into downloadable binary PDF files (`application/pdf`) via `/projects/<id>/reports/export/pdf`.
+### 1. ML Sprint Delay Risk Model (`ai/risk_model.py`, `ai/risk_service.py`)
+- **Algorithm**: `RandomForestClassifier`
+- **Feature Pipeline**: Normalized via `StandardScaler`
+- **Key Metrics Evaluated**:
+  - `task_completion_rate`: % of tasks in `Done` state.
+  - `story_point_completion_rate`: % of sprint story points finished.
+  - `overdue_tasks`: Count of tasks past due date.
+  - `days_remaining_pct`: Time left vs. total sprint duration.
+  - `hours_variance`: Actual hours logged vs. estimated.
+- **Output**: Risk Classification (`LOW`, `MEDIUM`, `HIGH`), Confidence Score (e.g. `85%`), and key risk drivers.
+
+### 2. AI Scrum Master Recommendations Engine (`ai/recommendations.py`)
+Generates actionable, prioritized Scrum Master advice based on metric variances:
+- **`HIGH` Priority**: Overdue tasks, approaching deadline with low completion, ML high risk flags.
+- **`MEDIUM` Priority**: Developer workload imbalances, unassigned high-priority tasks.
+- **`LOW` Priority**: Normal velocity & progress tracking guidance.
+
+### 3. NLP Daily Stand-Up Impediment Analyzer (`ai/standup_analysis.py`)
+- **Blocker Categorization**: Analyzes daily updates to flag status (`BLOCKED`, `POTENTIAL_ISSUE`, `ON_SCHEDULE`).
+- **Consecutive Blocker Alert**: Flags recurring developer impediments reported across multiple consecutive days.
+
+### 4. Intent-Based AI Assistant Chat (`ai/assistant.py`)
+- **Offline Query Processing**: Categorizes questions into 8 intents (`SPRINT_STATUS`, `RISK`, `OVERDUE_TASKS`, `TEAM_WORKLOAD`, `BLOCKERS`, `RECOMMENDATIONS`, `BACKLOG_STATUS`, `TASK_STATUS`).
+- **Context Injection**: Queries live database models to inject real project metrics directly into assistant answers.
 
 ---
 
-## 👥 User Roles & Permission Matrix
+## 📄 Reporting & Server-Side PDF Export
 
-| Feature / Action | Scrum Master | Product Owner | Developer |
+- **Interactive Web Reports**: Dynamic project health summaries, sprint point breakdown, developer capacity progress, and AI recommendations.
+- **Server-Side PDF Generator (`utils/pdf_generator.py`)**: Generates downloadable PDF reports via ReportLab at `/projects/<id>/reports/export/pdf`.
+
+---
+
+## 👥 Role-Based Access Control (RBAC) Matrix
+
+| Action / Capability | Scrum Master | Product Owner | Developer |
 | :--- | :---: | :---: | :---: |
-| **View Dashboard & Projects** | ✅ | ✅ | ✅ (Assigned) |
+| **View Dashboard & Workspace** | ✅ | ✅ | ✅ |
 | **Create / Edit / Delete Projects** | ✅ | ❌ | ❌ |
 | **Manage Team Members** | ✅ | ❌ | ❌ |
 | **Create / Edit User Stories** | ✅ | ✅ | ❌ |
-| **Create / Manage Sprints** | ✅ | ❌ | ❌ |
-| **Create / Edit Tasks** | ✅ | ✅ | ❌ (Own progress only) |
-| **Kanban Drag & Drop** | ✅ | ✅ | ✅ |
-| **Log Actual Hours & Task Progress**| ✅ | ✅ | ✅ (Assigned tasks) |
+| **Manage Sprints (Create/Start/Complete)** | ✅ | ❌ | ❌ |
+| **Create / Edit Tasks** | ✅ | ✅ | ❌ (Log hours only) |
+| **Kanban Drag-and-Drop** | ✅ | ✅ | ✅ |
 | **Submit Daily Stand-up Update** | ✅ | ✅ | ✅ |
-| **View AI Risk & Recommendations** | ✅ | ✅ | ✅ |
-| **Query AI Assistant** | ✅ | ✅ | ✅ |
-| **View & Export PDF Reports** | ✅ | ✅ | ✅ |
+| **Query AI Assistant & View AI Risk** | ✅ | ✅ | ✅ |
+| **Export PDF Reports** | ✅ | ✅ | ✅ |
 
 ---
 
-## 🔒 Security & Data Isolation
-
-- **Password Security**: Passwords stored using Werkzeug secure password hashing (`pbkdf2:sha256`).
-- **Session Management**: Server-side Flask session cookies with environment variable `SECRET_KEY` fallback.
-- **Project Isolation**: All routes enforce backend membership validation (`Project.get_user_projects`, `_check_project_access`). Users cannot view, modify, or download reports for projects they are not assigned to.
-- **Input Validation**: Form values are validated for non-empty text, non-negative hours, valid Fibonacci story points, valid date ranges, and sanitized query parameters.
-
----
-
-## 📁 Directory Structure
+## 📁 Repository Directory Layout
 
 ```
 cia_software/
-├── app.py                      # Flask entry point & error handlers (404, 403, 500)
-├── schema.sql                  # Database schema definitions
-├── requirements.txt            # Python dependencies (Flask, scikit-learn, reportlab, joblib)
-├── README.md                   # Comprehensive project documentation
-├── walkthrough.md              # Feature implementation verification log
-├── implementation_plan.md      # Technical design plan
+├── app.py                      # Flask Application Entry Point & Port Binding
+├── render.yaml                 # Render Production Deployment Blueprint
+├── requirements.txt            # Production Dependencies
+├── schema.sql                  # SQLite Database Schema
+├── supabase_schema.sql         # Supabase PostgreSQL Database Schema
+├── README.md                   # Production Documentation
 │
 ├── database/
-│   ├── db.py                   # SQLite connection provider & seed data initializer
-│   └── database.db             # SQLite database storage file
+│   ├── db.py                   # Unified Database Connection Provider
+│   ├── supabase_adapter.py     # Supabase PostgREST & Type Conversion Adapter
+│   └── database.db             # Local SQLite Database File
 │
 ├── models/
-│   ├── user.py                 # User model & authentication helpers
-│   ├── project.py              # Project CRUD & team member management
-│   ├── story.py                # Product Backlog & User Story model
-│   ├── sprint.py               # Sprint model & velocity calculator
-│   ├── task.py                 # Task management & workload statistics
-│   ├── standup.py              # Daily stand-up submissions & comment history
-│   └── bug.py                  # Defect tracking model
+│   ├── user.py                 # User Account & Authentication Model
+│   ├── project.py              # Project CRUD & Workspace Model
+│   ├── story.py                # Product Backlog & User Story Model
+│   ├── sprint.py               # Sprint Iteration & Velocity Model
+│   ├── task.py                 # Task & Workload Model
+│   ├── standup.py              # Daily Stand-Up Update Model
+│   └── bug.py                  # Defect & Bug Tracking Model
 │
 ├── ai/
-│   ├── data_preparation.py     # Dataset generator & feature scaling
-│   ├── risk_model.py           # RandomForest training & persistence pipeline
-│   ├── risk_service.py         # AI Sprint Risk prediction inference engine
-│   ├── recommendations.py      # Rule-based Scrum Master recommendation engine
-│   ├── standup_analysis.py     # NLP stand-up blocker analyzer
-│   └── assistant.py            # AI Scrum Master Assistant intent classifier & answer engine
+│   ├── data_preparation.py     # ML Feature Pipeline & Data Cleaner
+│   ├── risk_model.py           # RandomForest Training & Storage Pipeline
+│   ├── risk_service.py         # Real-time Sprint Risk Prediction Engine
+│   ├── recommendations.py      # Rule-based Recommendations Engine
+│   ├── standup_analysis.py     # NLP Stand-up Blocker Analyzer
+│   └── assistant.py            # Offline AI Assistant Query Engine
 │
 ├── routes/
-│   ├── auth_routes.py          # /login, /register, /logout endpoints
-│   ├── project_routes.py       # /dashboard, /projects CRUD, /team endpoints
-│   ├── backlog_routes.py       # /projects/<id>/backlog endpoints
-│   ├── sprint_routes.py        # /projects/<id>/sprints endpoints
-│   ├── task_routes.py          # /tasks, /kanban endpoints
-│   ├── standup_routes.py       # /projects/<id>/standup endpoints
-│   ├── ai_routes.py            # /assistant chat & AI API endpoints
-│   └── report_routes.py        # /projects/<id>/reports & PDF export endpoints
+│   ├── auth_routes.py          # /login, /register, /logout
+│   ├── project_routes.py       # /dashboard, /projects, /team
+│   ├── backlog_routes.py       # /projects/<id>/backlog
+│   ├── sprint_routes.py        # /projects/<id>/sprints
+│   ├── task_routes.py          # /tasks, /kanban
+│   ├── standup_routes.py       # /projects/<id>/standup
+│   ├── ai_routes.py            # /assistant chat endpoints
+│   └── report_routes.py        # /projects/<id>/reports & PDF export
 │
 ├── utils/
-│   └── pdf_generator.py        # ReportLab PDF document builder
+│   ├── supabase_client.py      # Official Supabase Python Client Provider
+│   └── pdf_generator.py        # ReportLab PDF Document Engine
 │
-├── templates/
-│   ├── base.html               # Main layout template with sidebar navigation
-│   ├── login.html              # Login template
-│   ├── register.html           # User registration template
-│   ├── dashboard.html          # Main workspace dashboard & AI cards
-│   ├── projects.html           # Project management view
-│   ├── project_details.html    # Single project details view
-│   ├── backlog.html            # Product backlog user story view
-│   ├── sprints.html            # Sprint planning view
-│   ├── kanban.html             # Drag-and-drop Kanban board view
-│   ├── team.html               # Team management view
-│   ├── standup.html            # Daily stand-up update feed view
-│   ├── assistant.html          # AI Scrum Master Assistant chat interface
-│   ├── reports.html            # Sprint & Project reports view with PDF trigger
-│   └── error.html              # Custom 404, 403, 500 error page template
+├── scripts/
+│   └── migrate_sqlite_to_supabase.py # SQLite-to-Supabase One-Time Data Migration Tool
 │
-├── static/
-│   ├── css/
-│   │   └── style.css           # Vanilla CSS SaaS dark design system
-│   └── js/
-│       ├── main.js             # Modal controls & layout helpers
-│       ├── kanban.js           # AJAX drag-and-drop Kanban controller
-│       └── charts.js           # Chart.js dashboard charts
-│
-└── tests/                      # Automated Test Suite (72 tests, 100% pass)
-    ├── test_auth_and_roles.py
-    ├── test_projects_and_teams.py
-    ├── test_backlog_sprints_tasks.py
-    ├── test_error_handlers.py
-    ├── test_assistant.py
-    ├── test_reports.py
-    ├── test_standup_analysis.py
-    ├── test_recommendations.py
-    ├── test_risk_service.py
-    ├── test_risk_model.py
-    └── test_data_preparation.py
+├── templates/                  # Jinja2 HTML Templates (Dark SaaS Theme)
+├── static/                     # Custom Vanilla CSS & Client JavaScript
+└── tests/                      # Pytest & Unittest Test Suite (100% Pass)
 ```
 
 ---
 
-## ⚙️ Installation & Setup Instructions
+## ⚙️ Local Development & Installation Guide
 
 ### 1. Prerequisites
-- Python **3.10** or higher installed on Windows.
+- Python **3.10** or higher installed.
 
-### 2. Open Terminal / PowerShell
-Open PowerShell or Command Prompt and navigate to the project folder:
-```powershell
-cd c:\Users\steve\OneDrive\Desktop\cia_software
+### 2. Clone & Navigate to Project
+```bash
+git clone https://github.com/stevezone17-ops/ai-scrum-master-assistant.git
+cd ai-scrum-master-assistant
 ```
 
 ### 3. Virtual Environment Setup
-Create and activate a virtual environment:
-```powershell
+```bash
+# Windows
 python -m venv venv
 .\venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 ### 4. Install Dependencies
-Install all required packages from `requirements.txt`:
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
-### 5. Initialize Database & Run Server
-Execute `app.py` to initialize database tables, seed default demo data, and launch the web server:
-```powershell
-.\venv\Scripts\python.exe app.py
+### 5. Launch Local Server (SQLite Mode)
+```bash
+python app.py
+```
+Open your browser at `http://127.0.0.1:5000`.
+
+---
+
+## 🔐 Environment Configuration (.env)
+
+Create a `.env` file in the project root:
+
+```env
+# Database Backend Switcher (supabase OR sqlite)
+DATABASE_BACKEND=sqlite
+
+# Flask Configuration
+SECRET_KEY=your_production_secret_key_here
+FLASK_ENV=development
+
+# Supabase PostgreSQL Configuration (Required if DATABASE_BACKEND=supabase)
+SUPABASE_URL=https://your-supabase-project.supabase.co
+SUPABASE_KEY=your-supabase-anon-or-service-key
 ```
 
-### 6. Access the Application
-Open your web browser and navigate to:
-```
-http://127.0.0.1:5000
-```
+---
+
+## 🚀 Render Production Deployment Guide
+
+1. **Push Repository to GitHub**: Ensure all files are committed to `main`.
+2. **Create New Web Service on Render**: Connect your GitHub repository.
+3. **Build & Start Commands**:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app`
+4. **Environment Variables on Render**:
+   - `DATABASE_BACKEND` = `supabase`
+   - `SUPABASE_URL` = `https://<your-project>.supabase.co`
+   - `SUPABASE_KEY` = `<your-supabase-key>`
+   - `SECRET_KEY` = `<your-secret-key>`
+   - `PYTHON_VERSION` = `3.12.3`
 
 ---
 
 ## 🔑 Default Demo Credentials
 
-The database comes pre-seeded with sample user accounts for instant demonstration:
+Pre-seeded demo accounts available for immediate testing:
 
-| User Role | Username / Email | Password | Access Level |
+| Role | Username | Password | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Scrum Master** | `scrummaster` (or `sm@agilescrum.io`) | `password123` | Full project & administrative control |
-| **Developer** | `developer1` (or `dev1@agilescrum.io`) | `password123` | Assigned task updates & stand-up updates |
-| **Product Owner** | `productowner` (or `po@agilescrum.io`) | `password123` | Product backlog & report management |
+| **Scrum Master** | `scrummaster` | `password123` | Full project & sprint management access |
+| **Product Owner** | `productowner` | `password123` | Backlog creation & story points estimation |
+| **Developer** | `dev1` | `password123` | Task logging, Kanban updates & stand-up updates |
 
 ---
 
-## 🧪 Testing & Verification Results
+## 🧪 Automated Testing & Verification
 
-All 11 test modules were executed using the Python `unittest` framework:
+Run the test suite using `pytest`:
 
-```powershell
-.\venv\Scripts\python.exe -m unittest discover -s tests
+```bash
+python -m pytest tests/ -v
 ```
 
-### Final Test Summary:
-- **Total Test Suites**: 11
-- **Total Tests Executed**: 178
-- **Passed**: 178 (100% Pass Rate)
-- **Failed**: 0
-- **Errors**: 0
+### Test Suite Execution Output
+```
+======================= 21 passed in 41.88s =======================
+```
 
 ---
 
-## 🔮 Limitations & Future Enhancements
+## 📜 License & Acknowledgments
 
-### Current Limitations
-- **Offline Intent Classifier**: The AI assistant uses lightweight pattern matching for intent recognition to operate offline without API costs.
-- **Synthetic Training Baseline**: The initial ML model is trained on a synthetic sprint dataset generated by `ai/data_preparation.py` due to a lack of historical real-world sprint databases.
-
-### Future Enhancements
-- **LLM Integration**: Option to connect external APIs (e.g., Gemini or OpenAI) for complex free-form conversational queries.
-- **Third-Party Integrations**: Sync tasks and commits directly with GitHub, GitLab, or Jira.
-- **WebSocket Push**: Live WebSocket events for real-time Kanban card movements across multiple active browser windows.
-- **Burndown / Burnup Charts**: Visual SVG burndown progress charts embedded into Sprint Reports.
+This project is open-source software licensed under the **MIT License**.

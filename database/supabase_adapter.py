@@ -79,6 +79,15 @@ class SupabaseCursorAdapter:
         for col, val in zip(cols, params):
             row_data[col] = val
 
+        # Ensure primary key 'id' is set above current MAX(id) if not supplied
+        if ('id' not in row_data or row_data['id'] is None) and table_name.lower() != 'sqlite_sequence':
+            try:
+                max_res = self.client.table(table_name).select("id").order("id", desc=True).limit(1).execute()
+                max_id = max_res.data[0]['id'] if (max_res.data and len(max_res.data) > 0 and max_res.data[0].get('id') is not None) else 0
+                row_data['id'] = max_id + 1
+            except Exception as e:
+                logger.warning(f"Could not compute auto-increment ID for table '{table_name}': {e}")
+
         # Execute Supabase insert
         res = self.client.table(table_name).insert(row_data).execute()
         if res.data and len(res.data) > 0:

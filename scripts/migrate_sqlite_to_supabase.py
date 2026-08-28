@@ -153,21 +153,30 @@ def migrate_table(sqlite_conn, supabase_client, table_name, dry_run=False):
 
 def update_postgresql_sequences(supabase_client, dry_run=False):
     """
-    Query max ID per table and log sequence alignment instructions.
+    Query max ID per table and generate native PostgreSQL setval sequence alignment statements.
     """
     if dry_run or not supabase_client:
         return
 
-    logger.info("[+] Checking maximum IDs for sequence alignment...")
+    logger.info("[+] Checking maximum IDs for PostgreSQL sequence alignment...")
+    sqls = []
     for table_name in MIGRATION_ORDER:
         try:
             res = supabase_client.table(table_name).select("id").order("id", desc=True).limit(1).execute()
             if res.data and len(res.data) > 0:
                 max_id = res.data[0]['id']
-                logger.info(f"   - Table '{table_name}': MAX(id) = {max_id}")
+                seq_name = f"{table_name}_id_seq"
+                sql_stmt = f"SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), {max_id});"
+                sqls.append(sql_stmt)
+                logger.info(f"   - Table '{table_name:<16}': MAX(id) = {max_id:<4} | Sequence: {seq_name:<24} | Next ID: {max_id + 1}")
         except Exception as e:
             logger.warning(f"   - MAX(id) query skipped for '{table_name}': {e}")
-    logger.info("   - Refer to fix_sequences.sql to align sequence counters in Supabase SQL Editor.")
+
+    sql_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "fix_sequences.sql"))
+    with open(sql_file, "w", encoding="utf-8") as f:
+        f.write("-- Native PostgreSQL Identity Sequence Alignment\n\n")
+        f.write("\n".join(sqls) + "\n")
+    logger.info(f"[+] Native PostgreSQL sequence alignment SQL written to '{sql_file}'.")
 
 
 def run_migration(dry_run=False):

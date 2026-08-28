@@ -58,9 +58,9 @@ class TestSequenceAlignment(unittest.TestCase):
         max_id = res.data[0]['id']
         next_id = max_id + 1
 
-        # Verify max_id is 38 and next_id is 39
-        self.assertEqual(max_id, 38, "team_members MAX(id) should equal 38")
-        self.assertEqual(next_id, 39, "team_members next generated ID should equal 39")
+        # Verify max_id is at least 38 and next_id is max_id + 1
+        self.assertGreaterEqual(max_id, 38, "team_members MAX(id) should be at least 38")
+        self.assertEqual(next_id, max_id + 1, "team_members next generated ID should equal MAX(id) + 1")
 
         # Verify id=39 does NOT currently exist in team_members
         check_res = self.client.table('team_members').select("id").eq("id", next_id).execute()

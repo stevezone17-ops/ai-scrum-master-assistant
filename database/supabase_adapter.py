@@ -102,56 +102,86 @@ class SupabaseCursorAdapter:
         self._index = 0
         return self
 
+    def _parse_literal_val(self, val_str):
+        v = val_str.strip()
+        if v.upper() == 'NULL':
+            return None
+        if (v.startswith("'") and v.endswith("'")) or (v.startswith('"') and v.endswith('"')):
+            return v[1:-1]
+        try:
+            if '.' in v:
+                return float(v)
+            return int(v)
+        except ValueError:
+            return v
+
     def _handle_update(self, sql, params):
         # Extract table name, SET clause, and WHERE clause
         match = re.search(r"UPDATE\s+([^\s]+)\s+SET\s+(.*?)\s+WHERE\s+(.*)", sql, re.IGNORECASE | re.DOTALL)
         if not match:
             raise ValueError(f"Could not parse UPDATE statement: {sql}")
 
-        table_name = match.group(1).strip("`'\" ")
+        table_name = match.group(1).strip().strip("`'\" ").strip()
         set_clause = match.group(2).strip()
         where_clause = match.group(3).strip()
 
-        # Count placeholders in SET vs WHERE
-        set_cols = [c.split("=")[0].strip("`'\" ") for c in set_clause.split(",")]
-        num_set_params = len(set_cols)
-
-        set_params = params[:num_set_params]
-        where_params = params[num_set_params:]
+        # Split SET clause by commas outside quotes
+        assignments = re.split(r",(?=(?:[^']*'[^']*')*[^']*$)", set_clause)
 
         update_dict = {}
-        for col, val in zip(set_cols, set_params):
-            update_dict[col] = val
+        param_idx = 0
+
+        for assign in assignments:
+            assign = assign.strip()
+            if not assign:
+                continue
+            if "=" in assign:
+                parts = assign.split("=", 1)
+                col_name = parts[0].strip().strip("`'\" ").strip()
+                val_expr = parts[1].strip()
+
+                num_placeholders = val_expr.count("?")
+                if num_placeholders > 0:
+                    val = params[param_idx]
+                    param_idx += num_placeholders
+                    update_dict[col_name] = val
+                else:
+                    update_dict[col_name] = self._parse_literal_val(val_expr)
+
+        where_params = params[param_idx:]
 
         # Build Supabase update query
         query = self.client.table(table_name).update(update_dict)
 
         # Parse simple WHERE conditions (e.g. id = ? or project_id = ? AND user_id = ?)
         where_conditions = re.split(r"\s+AND\s+", where_clause, flags=re.IGNORECASE)
-        param_idx = 0
+        w_param_idx = 0
         for cond in where_conditions:
             cond = cond.strip()
             w_match = re.match(r"([^\s=]+)\s*(=|!=|>|<|>=|<=|IN)\s*(.+)", cond, re.IGNORECASE)
             if w_match:
-                w_col = w_match.group(1).strip("`'\" ")
+                w_col = w_match.group(1).strip().strip("`'\" ").strip()
                 op = w_match.group(2).upper()
                 w_val_str = w_match.group(3).strip()
 
                 if "?" in w_val_str:
-                    w_val = where_params[param_idx]
-                    param_idx += 1
-                    if op == "=":
-                        query = query.eq(w_col, w_val)
-                    elif op == "!=":
-                        query = query.neq(w_col, w_val)
-                    elif op == ">":
-                        query = query.gt(w_col, w_val)
-                    elif op == "<":
-                        query = query.lt(w_col, w_val)
-                    elif op == ">=":
-                        query = query.gte(w_col, w_val)
-                    elif op == "<=":
-                        query = query.lte(w_col, w_val)
+                    w_val = where_params[w_param_idx]
+                    w_param_idx += 1
+                else:
+                    w_val = self._parse_literal_val(w_val_str)
+
+                if op == "=":
+                    query = query.eq(w_col, w_val)
+                elif op == "!=":
+                    query = query.neq(w_col, w_val)
+                elif op == ">":
+                    query = query.gt(w_col, w_val)
+                elif op == "<":
+                    query = query.lt(w_col, w_val)
+                elif op == ">=":
+                    query = query.gte(w_col, w_val)
+                elif op == "<=":
+                    query = query.lte(w_col, w_val)
 
         res = query.execute()
         self.rowcount = len(res.data) if res.data else 0

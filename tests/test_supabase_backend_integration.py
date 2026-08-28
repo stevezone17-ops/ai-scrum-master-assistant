@@ -81,6 +81,47 @@ class TestSupabaseBackendIntegration(unittest.TestCase):
         standups = StandupUpdate.get_by_project(1)
         self.assertTrue(len(standups) >= 0)
 
+    @patch.dict(os.environ, {'DATABASE_BACKEND': 'supabase'})
+    def test_update_parsing_edge_cases(self):
+        """Test _handle_update parsing for whitespace, multi-line, quoted columns, literal commas and parameters."""
+        from database.supabase_adapter import SupabaseCursorAdapter
+        mock_client = MagicMock()
+        mock_table = MagicMock()
+        mock_query = MagicMock()
+        mock_client.table.return_value = mock_table
+        mock_table.update.return_value = mock_query
+        mock_query.eq.return_value = mock_query
+        mock_query.neq.return_value = mock_query
+        mock_query.execute.return_value = MagicMock(data=[{'id': 1}])
+
+        adapter = SupabaseCursorAdapter(mock_client)
+
+        # 1. Normal UPDATE with multiple columns & whitespace/newlines
+        sql1 = """
+            UPDATE tasks
+            SET title = ?, description = ?,
+                actual_hours = ?
+            WHERE id = ?
+        """
+        adapter.execute(sql1, ("Title A", "Desc B", 5.0, 1))
+        mock_table.update.assert_called_with({'title': 'Title A', 'description': 'Desc B', 'actual_hours': 5.0})
+        mock_query.eq.assert_called_with('id', 1)
+
+        # 2. Quoted column names & literal values in SET
+        mock_table.reset_mock()
+        mock_query.reset_mock()
+        sql2 = "UPDATE team_members SET `role_in_project` = ? WHERE project_id = ? AND user_id = ?"
+        adapter.execute(sql2, ("Developer", 10, 20))
+        mock_table.update.assert_called_with({'role_in_project': 'Developer'})
+
+        # 3. SET clause with literal commas inside strings
+        mock_table.reset_mock()
+        mock_query.reset_mock()
+        sql3 = "UPDATE tasks SET description = 'Fix A, B, and C', status = ? WHERE id = ?"
+        adapter.execute(sql3, ("Done", 15))
+        mock_table.update.assert_called_with({'description': 'Fix A, B, and C', 'status': 'Done'})
+        mock_query.eq.assert_called_with('id', 15)
+
     @patch.dict(os.environ, {'DATABASE_BACKEND': 'sqlite'})
     def test_sqlite_fallback_login_functionality(self):
         # Verify application works smoothly when switched back to SQLite fallback
